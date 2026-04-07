@@ -1,9 +1,15 @@
 # Portflow
 
-Portflow is a responsive portfolio tracker built with Next.js and Supabase. It supports authenticated users, live market price refresh, holdings import/export, Supabase-backed persistence, and installability as a PWA.
+Portflow is a responsive portfolio tracker for monitoring stock and asset performance across multiple markets, regions, and asset classes. The goal of the project is to give a single view of holdings, allocation, and performance across equities, ETFs, crypto, mutual funds, and other assets without splitting the workflow across multiple tools.
+
+It is built with Next.js and Supabase and supports authenticated users, live market price refresh, holdings import/export, Supabase-backed persistence, and installability as a PWA.
 
 ## Features
 
+- Track holdings across multiple markets, brokers, and asset classes in one dashboard
+- Support portfolios spanning regions such as the US, India, and the UAE
+- Monitor portfolio value, invested capital, and unrealised gain/loss
+- View allocation by platform, asset class, and geography
 - Portfolio dashboard with holdings, allocation views, and portfolio metrics
 - Auth with Supabase
 - Holdings stored per user in Supabase, with local fallback for demo mode
@@ -140,3 +146,23 @@ npm run lint
 Recommended deployment target: Vercel.
 
 Make sure the deployed environment includes the same Supabase and market-data environment variables as local development.
+
+## Project Goal
+
+The core goal of Portflow is to track performance across a mixed portfolio that spans:
+
+- multiple markets
+- multiple regions such as the US, India, and UAE
+- multiple brokers/platforms
+- multiple currencies
+- multiple asset classes
+
+Instead of treating only one market or one security type as the primary workflow, the app is designed to consolidate:
+
+- stocks
+- ETFs
+- crypto
+- mutual funds
+- gold and other asset categories
+
+into a single portfolio view with import, sync, and refresh workflows that can scale with a personal investment dashboard.
