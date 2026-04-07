@@ -17,11 +17,7 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#fff9f7",
-          color: "#171717",
-          fontSize: 180,
-          fontWeight: 800,
-          letterSpacing: -10,
+          background: "#f8fafc",
         }}
       >
         <div
@@ -31,12 +27,38 @@ export default function Icon() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            position: "relative",
             borderRadius: 120,
-            background: "#ff444f",
-            color: "#ffffff",
+            background: "#0f172a",
+            boxShadow: "0 24px 60px rgba(15, 23, 42, 0.18)",
           }}
         >
-          P
+          <div
+            style={{
+              position: "absolute",
+              top: 52,
+              right: 52,
+              width: 34,
+              height: 34,
+              borderRadius: 999,
+              background: "#ff444f",
+            }}
+          />
+          <div
+            style={{
+              display: "flex",
+              alignItems: "baseline",
+              gap: 6,
+              color: "#ffffff",
+              fontSize: 158,
+              fontWeight: 800,
+              letterSpacing: -12,
+              lineHeight: 1,
+            }}
+          >
+            <span>P</span>
+            <span style={{ color: "#cbd5e1" }}>F</span>
+          </div>
         </div>
       </div>
     ),
