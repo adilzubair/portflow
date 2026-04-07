@@ -15,6 +15,7 @@ export default function DashboardShell({
   const router = useRouter();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [isAmountsVisible, setIsAmountsVisible] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -40,6 +41,18 @@ export default function DashboardShell({
     return () => window.removeEventListener("portflow:visibility-state", handleVisibility as EventListener);
   }, []);
 
+  useEffect(() => {
+    function handleRefreshState(event: Event) {
+      const detail = (event as CustomEvent<{ refreshing: boolean }>).detail;
+      if (detail && typeof detail.refreshing === "boolean") {
+        setIsRefreshing(detail.refreshing);
+      }
+    }
+
+    window.addEventListener("portflow:refresh-state", handleRefreshState as EventListener);
+    return () => window.removeEventListener("portflow:refresh-state", handleRefreshState as EventListener);
+  }, []);
+
   const handleSignOut = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -60,9 +73,19 @@ export default function DashboardShell({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent("portflow:refresh-prices"))}
-                className="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                aria-label={isRefreshing ? "Refreshing prices" : "Refresh prices"}
               >
-                Refresh
+                <svg
+                  className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M2.985 19.644l3.181-3.183" />
+                </svg>
+                <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
               </button>
 
               <button

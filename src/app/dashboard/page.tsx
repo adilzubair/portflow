@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { DEFAULT_HOLDINGS, type Holding } from "@/lib/constants";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
 import { computeHolding, formatMoney, generateId, timeAgo } from "@/lib/utils";
@@ -28,6 +28,9 @@ export default function DashboardPage() {
   const [editingHolding, setEditingHolding] = useState<Holding | null>(null);
   const [mounted, setMounted] = useState(false);
   const [userId, setUserId] = useState<string>("default");
+  const [pullDistance, setPullDistance] = useState(0);
+  const touchStartYRef = useRef<number | null>(null);
+  const pullingRef = useRef(false);
 
   useEffect(() => {
     async function init() {
@@ -230,6 +233,70 @@ export default function DashboardPage() {
   }, [refreshPrices]);
 
   useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("portflow:refresh-state", {
+        detail: { refreshing: isRefreshing },
+      })
+    );
+  }, [isRefreshing]);
+
+  useEffect(() => {
+    function handleTouchStart(event: TouchEvent) {
+      if (window.scrollY > 0 || isRefreshing) {
+        touchStartYRef.current = null;
+        pullingRef.current = false;
+        return;
+      }
+
+      touchStartYRef.current = event.touches[0]?.clientY ?? null;
+      pullingRef.current = false;
+    }
+
+    function handleTouchMove(event: TouchEvent) {
+      if (touchStartYRef.current === null || isRefreshing) {
+        return;
+      }
+
+      const currentY = event.touches[0]?.clientY ?? touchStartYRef.current;
+      const delta = currentY - touchStartYRef.current;
+
+      if (delta <= 0 || window.scrollY > 0) {
+        setPullDistance(0);
+        pullingRef.current = false;
+        return;
+      }
+
+      const damped = Math.min(delta * 0.45, 96);
+      pullingRef.current = true;
+      setPullDistance(damped);
+
+      if (damped > 6) {
+        event.preventDefault();
+      }
+    }
+
+    function handleTouchEnd() {
+      if (pullingRef.current && pullDistance >= 72 && !isRefreshing) {
+        refreshPrices();
+      }
+
+      touchStartYRef.current = null;
+      pullingRef.current = false;
+      setPullDistance(0);
+    }
+
+    window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchmove", handleTouchMove, { passive: false });
+    window.addEventListener("touchend", handleTouchEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [isRefreshing, pullDistance, refreshPrices]);
+
+  useEffect(() => {
     function handleToggleVisibility(event: Event) {
       const detail = (event as CustomEvent<{ visible: boolean }>).detail;
       if (detail && typeof detail.visible === "boolean") {
@@ -300,6 +367,32 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      <div
+        className="pointer-events-none sticky top-3 z-30 flex justify-center transition-all duration-150"
+        style={{
+          transform: `translateY(${pullDistance ? Math.min(pullDistance - 24, 36) : -18}px)`,
+          opacity: isRefreshing || pullDistance > 0 ? 1 : 0,
+        }}
+      >
+        <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 shadow-sm">
+          <svg
+            className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={2}
+            stroke="currentColor"
+            style={{
+              transform: !isRefreshing ? `rotate(${Math.min(pullDistance * 2.4, 180)}deg)` : undefined,
+            }}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M2.985 19.644l3.181-3.183" />
+          </svg>
+          <span>
+            {isRefreshing ? "Refreshing..." : pullDistance >= 72 ? "Release to refresh" : "Pull to refresh"}
+          </span>
+        </div>
+      </div>
+
       <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <SummaryCard
           label="Total Portfolio Value"
