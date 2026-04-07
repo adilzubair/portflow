@@ -7,7 +7,7 @@ export type Geography = 'India' | 'US' | 'UAE' | 'Global' | 'Others';
 export type Risk = 'Low' | 'Medium' | 'High';
 export type Currency = 'AED' | 'USD' | 'INR';
 export type Platform = 'IG' | 'iVestor' | 'Binance' | 'Groww' | 'Custom';
-export type PriceSource = 'mfapi' | 'twelvedata' | 'coingecko' | 'alphavantage' | 'frankfurter' | 'manual';
+export type PriceSource = 'mfapi' | 'twelvedata' | 'coingecko' | 'alphavantage' | 'frankfurter' | 'dfm' | 'manual';
 
 export const PLATFORM_OPTIONS: string[] = ['IG', 'iVestor', 'Binance', 'Groww', 'Custom'];
 export const ASSET_CLASS_OPTIONS: AssetClass[] = ['Stocks', 'ETFs', 'Crypto', 'Mutual Funds', 'Cash', 'Gold', 'Bonds', 'Others'];

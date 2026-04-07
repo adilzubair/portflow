@@ -1,5 +1,6 @@
 import { fetchAlphaVantageMultiple } from "@/lib/api/alphavantage";
 import { fetchCryptoPrices } from "@/lib/api/coingecko";
+import { fetchDfmQuotes } from "@/lib/api/dfm";
 import { fetchExchangeRates } from "@/lib/api/frankfurter";
 import { fetchMutualFundNav } from "@/lib/api/mfapi";
 import { fetchTwelveDataQuotes } from "@/lib/api/twelvedata";
@@ -60,7 +61,7 @@ export async function POST(request: Request) {
       holdings
         .filter(
           (holding) =>
-            holding.priceSource === "twelvedata" &&
+            holding.priceSource === "dfm" &&
             holding.geography === "UAE" &&
             Boolean(holding.ticker)
         )
@@ -96,7 +97,7 @@ export async function POST(request: Request) {
       Promise.resolve({
         source: "uae-stocks",
         success: true,
-        data: uaeStockSymbols.length ? await fetchTwelveDataQuotes(uaeStockSymbols, "DFM") : {},
+        data: uaeStockSymbols.length ? await fetchDfmQuotes(uaeStockSymbols) : {},
       }),
       Promise.resolve({
         source: "crypto",
