@@ -368,9 +368,9 @@ export default function DashboardPage() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div
-        className="pointer-events-none sticky top-3 z-30 flex justify-center transition-all duration-150"
+        className="pointer-events-none fixed left-1/2 top-[5.25rem] z-30 flex -translate-x-1/2 justify-center transition-all duration-150 sm:top-[6.25rem]"
         style={{
-          transform: `translateY(${pullDistance ? Math.min(pullDistance - 24, 36) : -18}px)`,
+          transform: `translate(-50%, ${pullDistance ? Math.min(pullDistance - 24, 36) : -28}px)`,
           opacity: isRefreshing || pullDistance > 0 ? 1 : 0,
         }}
       >
