@@ -146,13 +146,23 @@ export default function SettingsPage() {
 
                   const text = await file.text();
                   try {
-                    const parsed = JSON.parse(text) as Holding[];
+                    const parsed = JSON.parse(text);
+                    if (!Array.isArray(parsed)) {
+                      throw new Error("Expected an array of holdings");
+                    }
+
                     const supabase = createClient();
-                    await replaceRemoteHoldings(supabase, userId, parsed);
+                    await replaceRemoteHoldings(supabase, userId, parsed as Holding[]);
                     localStorage.setItem(storageKey, text);
                     window.location.reload();
-                  } catch {
-                    alert("Invalid JSON file");
+                  } catch (error) {
+                    if (error instanceof SyntaxError) {
+                      alert("Invalid JSON file");
+                      return;
+                    }
+
+                    const message = error instanceof Error ? error.message : "Failed to import holdings";
+                    alert(message);
                   }
                 };
                 input.click();
