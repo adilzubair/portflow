@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { DEFAULT_HOLDINGS, type Holding } from "@/lib/constants";
+import { normalizeHoldings } from "@/lib/holdings-normalize";
 import { computeHolding, formatMoney, generateId, timeAgo } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { fetchRemoteHoldings, replaceRemoteHoldings } from "@/lib/holdings-store";
@@ -46,13 +47,18 @@ export default function DashboardPage() {
         const remoteHoldings = await fetchRemoteHoldings(supabase, uid);
 
         if (remoteHoldings && remoteHoldings.length > 0) {
-          setHoldings(remoteHoldings);
-          localStorage.setItem(storageKey, JSON.stringify(remoteHoldings));
+          const { normalized, changed } = normalizeHoldings(remoteHoldings);
+          setHoldings(normalized);
+          localStorage.setItem(storageKey, JSON.stringify(normalized));
+          if (changed) {
+            await replaceRemoteHoldings(supabase, uid, normalized);
+          }
         } else if (saved) {
           try {
             const parsed = JSON.parse(saved) as Holding[];
-            setHoldings(parsed);
-            await replaceRemoteHoldings(supabase, uid, parsed);
+            const { normalized } = normalizeHoldings(parsed);
+            setHoldings(normalized);
+            await replaceRemoteHoldings(supabase, uid, normalized);
           } catch {
             setHoldings(DEFAULT_HOLDINGS);
           }
@@ -173,12 +179,22 @@ export default function DashboardPage() {
             }
           }
 
-          if (result.source === "us-etfs" || result.source === "uae-stocks") {
+          if (result.source === "us-etfs") {
             const quotes = result.data as Record<string, { close: string }>;
             for (const [symbol, quote] of Object.entries(quotes)) {
               const index = updated.findIndex((holding) => holding.ticker === symbol);
               if (index !== -1) {
                 updated[index] = { ...updated[index], currentPrice: parseFloat(quote.close), lastPriceUpdate: now };
+              }
+            }
+          }
+
+          if (result.source === "uae-stocks") {
+            const quotes = result.data as Record<string, { lastradeprice: number }>;
+            for (const [symbol, quote] of Object.entries(quotes)) {
+              const index = updated.findIndex((holding) => holding.ticker === symbol);
+              if (index !== -1 && quote.lastradeprice > 0) {
+                updated[index] = { ...updated[index], currentPrice: quote.lastradeprice, lastPriceUpdate: now };
               }
             }
           }

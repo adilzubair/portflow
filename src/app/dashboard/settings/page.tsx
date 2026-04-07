@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { type Holding } from "@/lib/constants";
+import { normalizeHoldings } from "@/lib/holdings-normalize";
 import { replaceRemoteHoldings } from "@/lib/holdings-store";
 import { createClient } from "@/lib/supabase/client";
 
@@ -151,9 +152,10 @@ export default function SettingsPage() {
                       throw new Error("Expected an array of holdings");
                     }
 
+                    const { normalized } = normalizeHoldings(parsed as Holding[]);
                     const supabase = createClient();
-                    await replaceRemoteHoldings(supabase, userId, parsed as Holding[]);
-                    localStorage.setItem(storageKey, text);
+                    await replaceRemoteHoldings(supabase, userId, normalized);
+                    localStorage.setItem(storageKey, JSON.stringify(normalized));
                     window.location.reload();
                   } catch (error) {
                     if (error instanceof SyntaxError) {
