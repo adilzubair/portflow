@@ -99,14 +99,14 @@ export const DEFAULT_HOLDINGS: Holding[] = [];
 
 // Chart colors
 export const PIE_COLORS = [
-  '#8B5CF6', // violet
-  '#10B981', // emerald
-  '#F59E0B', // amber
-  '#3B82F6', // blue
-  '#EF4444', // red
-  '#EC4899', // pink
-  '#14B8A6', // teal
-  '#F97316', // orange
-  '#6366F1', // indigo
-  '#84CC16', // lime
+  '#6BC2B8',
+  '#D6A85F',
+  '#6F93C8',
+  '#56C288',
+  '#D86B68',
+  '#8DB6A4',
+  '#C98C74',
+  '#A1A7CF',
+  '#7E9184',
+  '#B9C1A1',
 ];
