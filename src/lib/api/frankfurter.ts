@@ -14,9 +14,9 @@ export async function fetchExchangeRates(
   targets: string[] = ['USD', 'INR']
 ): Promise<ExchangeRates | null> {
   try {
-    const to = targets.join(',');
+    const symbols = targets.join(',');
     const res = await fetch(
-      `https://api.frankfurter.dev/latest?from=${base}&to=${to}`,
+      `https://api.frankfurter.dev/v1/latest?base=${base}&symbols=${symbols}`,
       { next: { revalidate: 3600 } } // Cache 1 hour
     );
     if (!res.ok) throw new Error(`Frankfurter error: ${res.status}`);
