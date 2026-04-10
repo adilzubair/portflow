@@ -3,7 +3,6 @@ import { fetchCryptoPrices } from "@/lib/api/coingecko";
 import { fetchDfmQuotes } from "@/lib/api/dfm";
 import { fetchExchangeRates } from "@/lib/api/frankfurter";
 import { fetchMutualFundNav } from "@/lib/api/mfapi";
-import { fetchTwelveDataQuotes } from "@/lib/api/twelvedata";
 import type { Holding } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
@@ -50,7 +49,7 @@ export async function POST(request: Request) {
       holdings
         .filter(
           (holding) =>
-            holding.priceSource === "twelvedata" &&
+            holding.priceSource === "alphavantage" &&
             holding.geography === "US" &&
             Boolean(holding.ticker)
         )
@@ -78,7 +77,7 @@ export async function POST(request: Request) {
     );
 
     const tasks: Promise<PriceResult>[] = [
-      Promise.resolve({ source: "currency", success: true, data: await fetchExchangeRates("AED", ["USD", "INR"]) }),
+      Promise.resolve({ source: "currency", success: true, data: await fetchExchangeRates() }),
       Promise.resolve({
         source: "indian-mf",
         success: true,
@@ -92,7 +91,7 @@ export async function POST(request: Request) {
       Promise.resolve({
         source: "us-etfs",
         success: true,
-        data: usEtfSymbols.length ? await fetchTwelveDataQuotes(usEtfSymbols) : {},
+        data: usEtfSymbols.length ? await fetchAlphaVantageMultiple(usEtfSymbols) : {},
       }),
       Promise.resolve({
         source: "uae-stocks",

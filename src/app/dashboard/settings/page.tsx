@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { type Holding } from "@/lib/constants";
+import { DEFAULT_INR_TO_AED_RATE, getRateStorageKey } from "@/lib/dashboard/persistence";
+import { buildBackfilledSnapshots } from "@/lib/history-backfill";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
 import { replaceRemoteHoldings } from "@/lib/holdings-store";
+import { fetchPortfolioSnapshots, replacePortfolioSnapshots } from "@/lib/portfolio-snapshots";
 import { createClient } from "@/lib/supabase/client";
 
 interface ApiStatus {
@@ -19,14 +22,16 @@ const apiStatuses: ApiStatus[] = [
   { name: "CoinGecko", description: "Cryptocurrency prices", status: "ok", keyRequired: false },
   { name: "Frankfurter", description: "Currency exchange rates", status: "ok", keyRequired: false },
   { name: "Binance WebSocket", description: "Real-time BTC price stream", status: "ok", keyRequired: false },
-  { name: "Yahoo Finance", description: "Indian stocks and ETFs on NSE", status: "ok", keyRequired: false },
-  { name: "Twelve Data", description: "US ETFs and UAE stocks on DFM", status: "unknown", keyRequired: true, envVar: "TWELVE_DATA_API_KEY" },
+  { name: "Yahoo Finance (India)", description: "Indian stocks and ETFs on NSE", status: "ok", keyRequired: false },
+  { name: "Yahoo Finance (US ETFs)", description: "US stocks and ETFs", status: "ok", keyRequired: false },
+  { name: "Twelve Data", description: "Optional fallback for UAE stocks on DFM", status: "unknown", keyRequired: true, envVar: "TWELVE_DATA_API_KEY" },
 ];
 
 export default function SettingsPage() {
   const [userId, setUserId] = useState<string>("default");
   const [testResults, setTestResults] = useState<Record<string, string>>({});
   const [testing, setTesting] = useState(false);
+  const [rebuildingHistory, setRebuildingHistory] = useState(false);
 
   useEffect(() => {
     async function getUser() {
@@ -41,10 +46,16 @@ export default function SettingsPage() {
   }, []);
 
   const storageKey = `portflow-holdings-${userId}`;
+  const rateStorageKey = getRateStorageKey(userId);
 
   const testEndpoint = async (path: string) => {
     try {
       const response = await fetch(path);
+      const contentType = response.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        return "Unexpected response";
+      }
+
       const data = await response.json();
       return data.success ? "Healthy" : data.error || "Error";
     } catch {
@@ -57,8 +68,8 @@ export default function SettingsPage() {
 
     const endpoints = [
       { name: "MFAPI.in", path: "/api/prices/indian-mf" },
-      { name: "Yahoo Finance", path: "/api/prices/indian-stocks" },
-      { name: "Twelve Data", path: "/api/prices/us-etfs" },
+      { name: "Yahoo Finance (India)", path: "/api/prices/indian-stocks" },
+      { name: "Yahoo Finance (US ETFs)", path: "/api/prices/us-etfs" },
       { name: "CoinGecko", path: "/api/prices/crypto" },
       { name: "Frankfurter", path: "/api/prices/currency" },
     ];
@@ -75,6 +86,30 @@ export default function SettingsPage() {
     setTesting(false);
   };
 
+  const rebuildHistory = async () => {
+    setRebuildingHistory(true);
+
+    try {
+      const rawHoldings = localStorage.getItem(storageKey);
+      const parsed = rawHoldings ? (JSON.parse(rawHoldings) as Holding[]) : [];
+      const { normalized } = normalizeHoldings(parsed);
+      const storedRate = Number(localStorage.getItem(rateStorageKey));
+      const inrToAedRate =
+        Number.isFinite(storedRate) && storedRate > 0 ? storedRate : DEFAULT_INR_TO_AED_RATE;
+
+      const existingSnapshots = await fetchPortfolioSnapshots(userId);
+      const rebuiltSnapshots = buildBackfilledSnapshots(normalized, existingSnapshots, inrToAedRate);
+
+      await replacePortfolioSnapshots(userId, rebuiltSnapshots);
+      window.location.reload();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to rebuild history";
+      alert(message);
+    } finally {
+      setRebuildingHistory(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <section className="glass-card p-6 sm:p-7">
@@ -82,20 +117,20 @@ export default function SettingsPage() {
       </section>
 
       <section className="glass-card overflow-hidden">
-        <div className="flex flex-col gap-4 border-b border-black/8 px-6 py-5 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col gap-4 border-b border-border-default px-6 py-5 md:flex-row md:items-end md:justify-between">
           <div>
             <h2 className="text-xl font-semibold text-text-primary">Service health</h2>
           </div>
           <button
             onClick={runTests}
             disabled={testing}
-            className="rounded-full bg-accent-violet px-5 py-3 text-sm font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-55"
+            className="rounded-full bg-accent-violet px-5 py-3 text-sm font-semibold text-bg-primary transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-55"
           >
             {testing ? "Running checks" : "Run API checks"}
           </button>
         </div>
 
-        <div className="divide-y divide-black/[0.06]">
+        <div className="divide-y divide-border-default/60">
           {apiStatuses.map((api) => (
             <div key={api.name} className="grid gap-4 px-6 py-5 md:grid-cols-[minmax(0,1fr)_220px] md:items-center">
               <div>
@@ -106,7 +141,7 @@ export default function SettingsPage() {
                 <p className="mt-2 text-sm leading-6 text-text-secondary">{api.description}</p>
                 {api.envVar && <p className="mt-2 text-xs font-mono text-text-muted">{api.envVar}</p>}
               </div>
-              <div className="rounded-[1.2rem] border border-black/8 bg-[#fffaf8] px-4 py-3 text-sm text-text-secondary">
+              <div className="rounded-[1.2rem] border border-border-default bg-bg-elevated px-4 py-3 text-sm text-text-secondary">
                 {testResults[api.name] || (api.status === "ok" ? "Ready" : "Not checked")}
               </div>
             </div>
@@ -114,7 +149,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section>
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <div className="glass-card p-6">
           <h2 className="text-xl font-semibold text-text-primary">Data management</h2>
 
@@ -185,43 +220,40 @@ export default function SettingsPage() {
             />
           </div>
 
-          <div className="mt-5 rounded-[1.2rem] border border-black/8 bg-[#fffaf8] p-4">
-            <h3 className="text-sm font-semibold text-text-primary">Import format</h3>
-            <p className="mt-2 text-sm leading-6 text-text-secondary">
-              Upload a JSON array of holdings. Each item should include at least:
-              <span className="font-mono"> id</span>,
-              <span className="font-mono"> platform</span>,
-              <span className="font-mono"> assetName</span>,
-              <span className="font-mono"> assetClass</span>,
-              <span className="font-mono"> geography</span>,
-              <span className="font-mono"> risk</span>,
-              <span className="font-mono"> quantity</span>,
-              <span className="font-mono"> avgBuyPrice</span>,
-              <span className="font-mono"> currentPrice</span>,
-              <span className="font-mono"> currency</span>.
-              <span className="ml-1">The app will infer</span>
-              <span className="font-mono"> priceSource</span>
-              <span className="ml-1">from fields like ticker, geography, asset class, and schemeCode.</span>
-            </p>
-            <pre className="mt-3 overflow-x-auto rounded-xl bg-white p-3 text-xs text-slate-700 ring-1 ring-slate-200">
-{`[
-  {
-    "id": "h-001",
-    "platform": "IG",
-    "assetName": "iShares Bitcoin Trust ETF",
-    "ticker": "IBIT",
-    "assetClass": "ETFs",
-    "sector": "Crypto Exposure",
-    "geography": "US",
-    "risk": "High",
-    "quantity": 7,
-    "avgBuyPrice": 40.66,
-    "currentPrice": 39.53,
-    "currency": "USD",
-    "notes": ""
-  }
-]`}
-            </pre>
+          <div className="mt-5 rounded-[1.2rem] border border-border-default bg-bg-elevated p-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-text-primary">Historical snapshots</h3>
+                <p className="mt-1 text-sm leading-6 text-text-secondary">
+                  Rebuild missing history from purchase dates. Backfilled dates assume portfolio value matched invested cost on those earlier entries.
+                </p>
+              </div>
+              <button
+                onClick={rebuildHistory}
+                disabled={rebuildingHistory}
+                className="rounded-full border border-border-default bg-bg-card px-4 py-2.5 text-sm font-semibold text-text-primary transition hover:bg-bg-card-hover disabled:cursor-not-allowed disabled:opacity-55"
+              >
+                {rebuildingHistory ? "Rebuilding history" : "Rebuild history"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="glass-card p-6">
+          <h2 className="text-xl font-semibold text-text-primary">Setup</h2>
+          <div className="mt-5 space-y-5 text-sm leading-6 text-slate-600">
+            <SetupStep
+              title="Supabase"
+              body="Add the project URL and anon key to .env.local, then run the holdings migration."
+            />
+            <SetupStep
+              title="Twelve Data"
+              body="Add TWELVE_DATA_API_KEY for US ETFs and UAE equities."
+            />
+            <SetupStep
+              title="Deploy"
+              body="Mirror the same environment variables in Vercel."
+            />
           </div>
         </div>
       </section>
@@ -231,7 +263,7 @@ export default function SettingsPage() {
 
 function StatusPill({ children }: { children: string }) {
   return (
-    <span className="rounded-full border border-black/8 bg-white px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-text-muted">
+    <span className="rounded-full border border-border-default bg-bg-card px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-text-secondary">
       {children}
     </span>
   );
@@ -252,10 +284,19 @@ function ActionButton({
       className={`rounded-[1.2rem] border px-4 py-4 text-left text-sm font-medium transition ${
         destructive
           ? "border-accent-loss/20 bg-accent-loss-bg text-accent-loss hover:brightness-105"
-          : "border-black/8 bg-white text-text-primary hover:bg-[#fff1ef]"
+          : "border-border-default bg-bg-card text-text-primary hover:bg-bg-elevated"
       }`}
     >
       {label}
     </button>
+  );
+}
+
+function SetupStep({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="rounded-[1.2rem] border border-border-default bg-bg-elevated p-4">
+      <h3 className="font-semibold text-text-primary">{title}</h3>
+      <p className="mt-1.5 text-text-secondary">{body}</p>
+    </div>
   );
 }

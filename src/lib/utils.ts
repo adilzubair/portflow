@@ -3,12 +3,30 @@ import { USD_TO_AED, type ComputedHolding, type Currency, type Holding } from '.
 /**
  * Format a number as money in the given currency.
  */
-export function formatMoney(value: number, currency: Currency = 'AED'): string {
+export function formatMoney(value: number, currency: Currency | string = 'AED'): string {
+  if (currency === 'NONE') {
+    return new Intl.NumberFormat('en-US', {
+      style: 'decimal',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value || 0);
+  }
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
     maximumFractionDigits: 2,
   }).format(value || 0);
+}
+
+/**
+ * Format as money, or return dashes equal to the number of integer digits
+ * (e.g. 4-digit number like 4,123 returns '----')
+ */
+export function formatOrMask(value: number, currency: Currency | string = 'AED', isVisible: boolean = true): string {
+  if (isVisible) return formatMoney(value, currency as Currency);
+  const digitCount = Math.max(1, Math.floor(Math.abs(value || 0)).toString().length);
+  // Use Mathematical Minus Sign (U+2212) to prevent font ligatures from blending standard hyphens
+  return "\u2212".repeat(digitCount);
 }
 
 /**
@@ -41,7 +59,22 @@ export function computeHolding(holding: Holding, inrToAedRate: number): Computed
   const investedAmount = quantity * avgBuyPrice;
   const currentValue = quantity * currentPrice;
   const gainLoss = currentValue - investedAmount;
-  const gainLossPct = investedAmount ? (gainLoss / investedAmount) * 100 : 0;
+  const localGainLossPct = investedAmount ? (gainLoss / investedAmount) * 100 : 0;
+
+  let investedAmountAed = investedAmount * rateToAed;
+  const currentValueAed = currentValue * rateToAed;
+
+  if (holding.purchases && holding.purchases.length > 0 && holding.currency === 'INR') {
+    investedAmountAed = holding.purchases.reduce((sum, p) => {
+      const q = toNumber(p.quantity);
+      const pr = toNumber(p.price);
+      const batchFxRate = p.fxRate ? toNumber(p.fxRate) : rateToAed;
+      return sum + q * pr * batchFxRate;
+    }, 0);
+  }
+
+  const gainLossAed = currentValueAed - investedAmountAed;
+  const gainLossPct = investedAmountAed ? (gainLossAed / investedAmountAed) * 100 : 0;
 
   return {
     ...holding,
@@ -52,10 +85,11 @@ export function computeHolding(holding: Holding, inrToAedRate: number): Computed
     investedAmount,
     currentValue,
     gainLoss,
+    localGainLossPct,
     gainLossPct,
-    investedAmountAed: investedAmount * rateToAed,
-    currentValueAed: currentValue * rateToAed,
-    gainLossAed: gainLoss * rateToAed,
+    investedAmountAed,
+    currentValueAed,
+    gainLossAed,
   };
 }
 

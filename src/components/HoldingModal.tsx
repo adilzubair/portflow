@@ -29,7 +29,18 @@ const emptyForm: Holding = {
 };
 
 export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }: Props) {
-  const [form, setForm] = useState<Holding>(holding || emptyForm);
+  const [form, setForm] = useState<Holding>(() => {
+    if (holding) {
+      if (!holding.purchases && holding.quantity > 0) {
+        return {
+          ...holding,
+          purchases: [{ quantity: holding.quantity, price: holding.avgBuyPrice, date: new Date().toISOString().split("T")[0] }],
+        };
+      }
+      return { ...holding, purchases: holding.purchases || [] };
+    }
+    return { ...emptyForm, purchases: [] };
+  });
   const preview = useMemo(() => computeHolding(form, inrToAedRate), [form, inrToAedRate]);
 
   const handleSubmit = (event: React.FormEvent) => {
@@ -39,6 +50,19 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
   };
 
   const update = (patch: Partial<Holding>) => setForm((current) => ({ ...current, ...patch }));
+
+  const updatePurchases = (newPurchases: NonNullable<Holding["purchases"]>) => {
+    let newQty = 0;
+    let totalInvested = 0;
+    for (const p of newPurchases) {
+      const q = toNumber(p.quantity) || 0;
+      const pr = toNumber(p.price) || 0;
+      newQty += q;
+      totalInvested += q * pr;
+    }
+    const newAvgPrice = newQty > 0 ? totalInvested / newQty : 0;
+    update({ purchases: newPurchases, quantity: newQty, avgBuyPrice: newAvgPrice });
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center" onClick={onClose}>
@@ -61,7 +85,8 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
               <PreviewRow label="Current Value" value={formatMoney(preview.currentValue, form.currency || "AED")} />
               <PreviewRow label="AED Rate Used" value={preview.rateToAed.toFixed(4)} />
               <PreviewRow label="Current Value in AED" value={formatMoney(preview.currentValueAed, "AED")} />
-              <PreviewRow label="Unrealised P/L in AED" value={`${formatMoney(preview.gainLossAed, "AED")} (${preview.gainLossPct.toFixed(2)}%)`} />
+              <PreviewRow label="Local Return" value={`${formatMoney(preview.gainLoss, form.currency || "AED")} (${preview.localGainLossPct.toFixed(2)}%)`} />
+              <PreviewRow label="Investor Return (AED)" value={`${formatMoney(preview.gainLossAed, "AED")} (${preview.gainLossPct.toFixed(2)}%)`} />
             </div>
           </div>
 
@@ -73,8 +98,6 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
             <FormInput label="Sector / Theme" value={form.sector} onChange={(value) => update({ sector: value })} placeholder="Technology, Banking" />
             <FormSelect label="Geography" value={form.geography} options={GEOGRAPHY_OPTIONS} onChange={(value) => update({ geography: value as Holding["geography"] })} />
             <FormSelect label="Risk" value={form.risk} options={RISK_OPTIONS} onChange={(value) => update({ risk: value as Holding["risk"] })} />
-            <FormNumber label="Quantity" value={form.quantity} onChange={(value) => update({ quantity: value })} />
-            <FormNumber label="Average Buy Price" value={form.avgBuyPrice} onChange={(value) => update({ avgBuyPrice: value })} />
             <FormNumber label="Current Market Price" value={form.currentPrice} onChange={(value) => update({ currentPrice: value })} />
             <FormSelect label="Currency" value={form.currency} options={CURRENCY_OPTIONS} onChange={(value) => update({ currency: value as Currency })} />
             <FormInput label="Scheme Code" value={form.schemeCode || ""} onChange={(value) => update({ schemeCode: value })} placeholder="AMFI code" />
@@ -85,10 +108,138 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
             <textarea className="w-full rounded-xl border border-slate-200 px-3 py-2" rows={3} value={form.notes} onChange={(event) => update({ notes: event.target.value })} placeholder="Optional notes" />
           </label>
 
-          <div className="grid gap-3 md:grid-cols-3">
+          {/* Purchase History Editor */}
+          <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-900">Purchase History</h3>
+              <button
+                type="button"
+                onClick={() => updatePurchases([...(form.purchases || []), { 
+                  quantity: 0, 
+                  price: 0, 
+                  date: new Date().toISOString().split("T")[0],
+                  ...(form.currency === "INR" ? { fxRate: Number(inrToAedRate.toFixed(4)) } : {})
+                }])}
+                className="text-xs font-medium text-emerald-600 hover:text-emerald-700"
+              >
+                + Add Purchase
+              </button>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="min-w-full border-collapse border border-slate-200 text-sm">
+                <thead>
+                  <tr className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+                    <th className="border-b border-slate-200 px-3 py-2 text-left">Date</th>
+                    <th className="border-b border-slate-200 px-3 py-2 text-left">Qty</th>
+                    <th className="border-b border-slate-200 px-3 py-2 text-left">Price</th>
+                    {form.currency === "INR" && <th className="border-b border-slate-200 px-3 py-2 text-left">FX Rate</th>}
+                    <th className="border-b border-slate-200 px-3 py-2" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {(form.purchases || []).map((purchase, index) => (
+                    <tr key={index} className="bg-white">
+                      <td className="border-b border-slate-200 px-3 py-2">
+                        <input
+                          type="date"
+                          className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm"
+                          value={purchase.date}
+                          onChange={(e) => {
+                            const newPurchases = [...(form.purchases || [])];
+                            newPurchases[index] = { ...purchase, date: e.target.value };
+                            updatePurchases(newPurchases);
+                          }}
+                          required
+                        />
+                      </td>
+                      <td className="border-b border-slate-200 px-3 py-2">
+                        <input
+                          type="number"
+                          step="any"
+                          className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm"
+                          placeholder="Qty"
+                          value={purchase.quantity || ""}
+                          onChange={(e) => {
+                            const newPurchases = [...(form.purchases || [])];
+                            newPurchases[index] = { ...purchase, quantity: toNumber(e.target.value) };
+                            updatePurchases(newPurchases);
+                          }}
+                          required
+                        />
+                      </td>
+                      <td className="border-b border-slate-200 px-3 py-2">
+                        <input
+                          type="number"
+                          step="any"
+                          className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm"
+                          placeholder="Price"
+                          value={purchase.price || ""}
+                          onChange={(e) => {
+                            const newPurchases = [...(form.purchases || [])];
+                            newPurchases[index] = { ...purchase, price: toNumber(e.target.value) };
+                            updatePurchases(newPurchases);
+                          }}
+                          required
+                        />
+                      </td>
+                      {form.currency === "INR" && (
+                        <td className="border-b border-slate-200 px-3 py-2">
+                          <input
+                            type="number"
+                            step="any"
+                            className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm"
+                            placeholder="FX Rate"
+                            value={purchase.fxRate || ""}
+                            onChange={(e) => {
+                              const newPurchases = [...(form.purchases || [])];
+                              newPurchases[index] = { ...purchase, fxRate: toNumber(e.target.value) };
+                              updatePurchases(newPurchases);
+                            }}
+                            title="INR to AED rate at time of purchase"
+                          />
+                        </td>
+                      )}
+                      <td className="border-b border-slate-200 px-3 py-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newPurchases = [...(form.purchases || [])];
+                            newPurchases.splice(index, 1);
+                            updatePurchases(newPurchases);
+                          }}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-red-500"
+                          title="Remove purchase"
+                        >
+                          ✕
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {(!form.purchases || form.purchases.length === 0) && (
+                <p className="mt-3 text-xs text-slate-500 text-center">No purchases recorded. Click &apos;+ Add Purchase&apos; to start tracking.</p>
+              )}
+            </div>
+            
+            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4 text-sm">
+              <div className="rounded-lg bg-slate-50 px-3 py-2 text-center ring-1 ring-slate-200">
+                <div className="text-xs text-slate-500">Total Qty</div>
+                <div className="font-semibold text-slate-900">{form.quantity < 1 ? form.quantity.toFixed(7) : form.quantity.toLocaleString()}</div>
+              </div>
+              <div className="rounded-lg bg-slate-50 px-3 py-2 text-center ring-1 ring-slate-200">
+                <div className="text-xs text-slate-500">Avg Price</div>
+                <div className="font-semibold text-slate-900">{formatMoney(form.avgBuyPrice, form.currency)}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-4">
             <AutoStat title="Auto Invested Amount" value={formatMoney(preview.investedAmount, form.currency || "AED")} sub={formatMoney(preview.investedAmountAed, "AED")} />
             <AutoStat title="Auto Current Value" value={formatMoney(preview.currentValue, form.currency || "AED")} sub={formatMoney(preview.currentValueAed, "AED")} />
-            <AutoStat title="Auto Gain / Loss" value={`${formatMoney(preview.gainLoss, form.currency || "AED")} (${preview.gainLossPct.toFixed(2)}%)`} sub={formatMoney(preview.gainLossAed, "AED")} />
+            <AutoStat title="Local Return" value={`${formatMoney(preview.gainLoss, form.currency || "AED")} (${preview.localGainLossPct.toFixed(2)}%)`} sub={preview.currency === "INR" ? "Pure stock return in INR" : `Pure return in ${preview.currency}`} />
+            <AutoStat title="Investor Return (AED)" value={`${formatMoney(preview.gainLossAed, "AED")} (${preview.gainLossPct.toFixed(2)}%)`} sub="Current AED return using today’s FX rate" />
           </div>
 
           <div className="flex items-center justify-end gap-3">

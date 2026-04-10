@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 
+const THEME_STORAGE_KEY = "portflow-theme";
+
 export default function DashboardShell({
   children,
   user,
@@ -16,6 +18,7 @@ export default function DashboardShell({
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [isAmountsVisible, setIsAmountsVisible] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -29,6 +32,15 @@ export default function DashboardShell({
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, []);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (storedTheme === "dark") setIsDarkMode(true);
+    else if (storedTheme === "light") setIsDarkMode(false);
+    else setIsDarkMode(window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false);
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
   useEffect(() => {
     function handleVisibility(event: Event) {
       const detail = (event as CustomEvent<{ visible: boolean }>).detail;
@@ -40,6 +52,17 @@ export default function DashboardShell({
     window.addEventListener("portflow:visibility-state", handleVisibility as EventListener);
     return () => window.removeEventListener("portflow:visibility-state", handleVisibility as EventListener);
   }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", isDarkMode);
+    window.localStorage.setItem(THEME_STORAGE_KEY, isDarkMode ? "dark" : "light");
+
+    window.dispatchEvent(
+      new CustomEvent("portflow:theme-change", {
+        detail: { dark: isDarkMode },
+      })
+    );
+  }, [isDarkMode]);
 
   useEffect(() => {
     function handleRefreshState(event: Event) {
@@ -111,6 +134,24 @@ export default function DashboardShell({
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 9.75l1.75 1.5" />
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75l-1.75 1.5" />
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 8.75v1.75" />
+                  </svg>
+                )}
+              </button>
+
+              <button
+                onClick={() => setIsDarkMode((current) => !current)}
+                className="rounded-full border border-slate-200 bg-slate-50 p-2.5 text-slate-700 hover:bg-slate-100"
+                title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+                aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {isDarkMode ? (
+                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+                  </svg>
+                ) : (
+                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="5" />
+                    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
                   </svg>
                 )}
               </button>

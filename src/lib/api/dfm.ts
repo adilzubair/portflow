@@ -1,3 +1,5 @@
+import https from "https";
+
 export interface DfmQuote {
   id: string;
   lastradeprice: number;
@@ -8,14 +10,35 @@ export interface DfmQuote {
 
 export async function fetchDfmQuotes(symbols: string[]): Promise<Record<string, DfmQuote>> {
   try {
-    const response = await fetch("https://api2.dfm.ae/mw/v1/stocks", {
-      next: { revalidate: 900 },
+    const data = await new Promise<Array<Record<string, unknown>>>((resolve, reject) => {
+      const req = https.request(
+        "https://api2.dfm.ae/mw/v1/stocks",
+        {
+          method: "GET",
+          rejectUnauthorized: false,
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          },
+        },
+        (res) => {
+          if (res.statusCode !== 200) {
+            reject(new Error(`DFM error: ${res.statusCode}`));
+            return;
+          }
+          let body = "";
+          res.on("data", (chunk) => (body += chunk));
+          res.on("end", () => {
+            try {
+              resolve(JSON.parse(body));
+            } catch (err) {
+              reject(err);
+            }
+          });
+        }
+      );
+      req.on("error", reject);
+      req.end();
     });
-    if (!response.ok) {
-      throw new Error(`DFM error: ${response.status}`);
-    }
-
-    const data = (await response.json()) as Array<Record<string, unknown>>;
     const wanted = new Set(symbols);
     const results: Record<string, DfmQuote> = {};
 

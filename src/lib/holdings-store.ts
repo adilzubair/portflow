@@ -18,6 +18,7 @@ interface HoldingRow {
   price_source: string;
   scheme_code: string | null;
   last_price_update: string | null;
+  purchases: string | null;
 }
 
 type SupabaseLikeClient = {
@@ -31,6 +32,10 @@ type SupabaseLikeClient = {
       eq: (column: string, value: string) => Promise<{ error: { message: string } | null }>;
     };
     insert: (values: HoldingRow[]) => Promise<{ error: { message: string } | null }>;
+    upsert: (
+      values: HoldingRow[],
+      options?: { onConflict?: string }
+    ) => Promise<{ error: { message: string } | null }>;
   };
 };
 
@@ -56,6 +61,7 @@ function mapRowToHolding(row: HoldingRow): Holding {
     priceSource: row.price_source as Holding["priceSource"],
     schemeCode: row.scheme_code || undefined,
     lastPriceUpdate: row.last_price_update || undefined,
+    purchases: row.purchases ? JSON.parse(row.purchases) : undefined,
   };
 }
 
@@ -78,7 +84,35 @@ function mapHoldingToRow(userId: string, holding: Holding): HoldingRow {
     price_source: holding.priceSource,
     scheme_code: holding.schemeCode || null,
     last_price_update: holding.lastPriceUpdate || null,
+    purchases: holding.purchases ? JSON.stringify(holding.purchases) : null,
   };
+}
+
+function generateHoldingId() {
+  return crypto.randomUUID();
+}
+
+function sanitizeHoldingIds(holdings: Holding[]): Holding[] {
+  const seenIds = new Set<string>();
+
+  return holdings.map((holding) => {
+    const originalId = holding.id?.trim();
+    const nextId =
+      originalId && !seenIds.has(originalId)
+        ? originalId
+        : generateHoldingId();
+
+    seenIds.add(nextId);
+
+    if (nextId === holding.id) {
+      return holding;
+    }
+
+    return {
+      ...holding,
+      id: nextId,
+    };
+  });
 }
 
 export async function fetchRemoteHoldings(client: unknown, userId: string): Promise<Holding[] | null> {
@@ -104,19 +138,23 @@ export async function replaceRemoteHoldings(client: unknown, userId: string, hol
     return false;
   }
 
+  const sanitizedHoldings = sanitizeHoldingIds(holdings);
+
   const deleteResult = await client.from("holdings").delete().eq("user_id", userId);
   if (deleteResult.error) {
     throw new Error(deleteResult.error.message);
   }
 
-  if (!holdings.length) {
+  if (!sanitizedHoldings.length) {
     return true;
   }
 
-  const rows = holdings.map((holding) => mapHoldingToRow(userId, holding));
-  const insertResult = await client.from("holdings").insert(rows);
-  if (insertResult.error) {
-    throw new Error(insertResult.error.message);
+  const rows = sanitizedHoldings.map((holding) => mapHoldingToRow(userId, holding));
+  const upsertResult = await client.from("holdings").upsert(rows, {
+    onConflict: "user_id,id",
+  });
+  if (upsertResult.error) {
+    throw new Error(upsertResult.error.message);
   }
 
   return true;

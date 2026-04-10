@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const results = await fetchExchangeRates('AED', ['USD', 'INR']);
+    const results = await fetchExchangeRates();
     return Response.json({ success: true, data: results, timestamp: new Date().toISOString() });
   } catch (error) {
     console.error('Currency API error:', error);

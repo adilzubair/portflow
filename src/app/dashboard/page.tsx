@@ -1,332 +1,66 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { DEFAULT_HOLDINGS, type Holding } from "@/lib/constants";
-import { normalizeHoldings } from "@/lib/holdings-normalize";
-import { computeHolding, formatMoney, generateId, timeAgo } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/client";
-import { fetchRemoteHoldings, replaceRemoteHoldings } from "@/lib/holdings-store";
+import { useMemo, useState } from "react";
 import AllocationCharts from "@/components/AllocationCharts";
-import HoldingsTable from "@/components/HoldingsTable";
+import HoldingDetailsModal from "@/components/HoldingDetailsModal";
 import HoldingModal from "@/components/HoldingModal";
+import HoldingsTable from "@/components/HoldingsTable";
+import PortfolioSummaryStrip from "@/components/PortfolioSummaryStrip";
+import PortfolioTrendChart from "@/components/PortfolioTrendChart";
+import { useDashboardState } from "@/hooks/useDashboardState";
+import type { Holding } from "@/lib/constants";
+import { getAedRate, toNumber } from "@/lib/utils";
 
-function getStorageKey(userId: string) {
-  return `portflow-holdings-${userId}`;
-}
+function getInvestedAmountAedOnDate(holding: Holding, snapshotDate: string, inrToAedRate: number) {
+  const snapshotTime = new Date(`${snapshotDate}T23:59:59`).getTime();
 
-function getRateStorageKey(userId: string) {
-  return `portflow-inr-aed-rate-${userId}`;
+  if (holding.purchases?.length) {
+    return holding.purchases.reduce((sum, purchase) => {
+      const purchaseTime = new Date(`${purchase.date}T23:59:59`).getTime();
+
+      if (Number.isNaN(purchaseTime) || purchaseTime > snapshotTime) {
+        return sum;
+      }
+
+      const quantity = toNumber(purchase.quantity);
+      const price = toNumber(purchase.price);
+      const rateToAed =
+        holding.currency === "INR"
+          ? toNumber(purchase.fxRate) || inrToAedRate
+          : getAedRate(holding.currency, inrToAedRate);
+
+      return sum + quantity * price * rateToAed;
+    }, 0);
+  }
+
+  const quantity = toNumber(holding.quantity);
+  const avgBuyPrice = toNumber(holding.avgBuyPrice);
+  const rateToAed = getAedRate(holding.currency, inrToAedRate);
+  return quantity * avgBuyPrice * rateToAed;
 }
 
 export default function DashboardPage() {
-  const [holdings, setHoldings] = useState<Holding[]>([]);
-  const [inrToAedRate, setInrToAedRate] = useState(0.044);
-  const [isAmountsVisible, setIsAmountsVisible] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastRefresh, setLastRefresh] = useState<string | undefined>();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingHolding, setEditingHolding] = useState<Holding | null>(null);
-  const [mounted, setMounted] = useState(false);
-  const [userId, setUserId] = useState<string>("default");
-  const [pullDistance, setPullDistance] = useState(0);
-  const touchStartYRef = useRef<number | null>(null);
-  const pullingRef = useRef(false);
-
-  useEffect(() => {
-    async function init() {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      const uid = user?.id || "default";
-      setUserId(uid);
-
-      const storageKey = getStorageKey(uid);
-      const rateKey = getRateStorageKey(uid);
-      const saved = localStorage.getItem(storageKey);
-      const savedRate = localStorage.getItem(rateKey);
-
-      try {
-        const remoteHoldings = await fetchRemoteHoldings(supabase, uid);
-
-        if (remoteHoldings && remoteHoldings.length > 0) {
-          const { normalized, changed } = normalizeHoldings(remoteHoldings);
-          setHoldings(normalized);
-          localStorage.setItem(storageKey, JSON.stringify(normalized));
-          if (changed) {
-            await replaceRemoteHoldings(supabase, uid, normalized);
-          }
-        } else if (saved) {
-          try {
-            const parsed = JSON.parse(saved) as Holding[];
-            const { normalized } = normalizeHoldings(parsed);
-            setHoldings(normalized);
-            await replaceRemoteHoldings(supabase, uid, normalized);
-          } catch {
-            setHoldings(DEFAULT_HOLDINGS);
-          }
-        } else {
-          setHoldings(DEFAULT_HOLDINGS);
-        }
-      } catch {
-        if (saved) {
-          try {
-            setHoldings(JSON.parse(saved));
-          } catch {
-            setHoldings(DEFAULT_HOLDINGS);
-          }
-        } else {
-          setHoldings(DEFAULT_HOLDINGS);
-        }
-      }
-
-      if (savedRate) {
-        setInrToAedRate(Number(savedRate));
-      }
-
-      setMounted(true);
-    }
-
-    init();
-  }, []);
-
-  useEffect(() => {
-    if (mounted) {
-      localStorage.setItem(getStorageKey(userId), JSON.stringify(holdings));
-
-      const timeoutId = window.setTimeout(async () => {
-        try {
-          const supabase = createClient();
-          await replaceRemoteHoldings(supabase, userId, holdings);
-        } catch (error) {
-          console.error("Failed to sync holdings to Supabase:", error);
-        }
-      }, 400);
-
-      return () => window.clearTimeout(timeoutId);
-    }
-  }, [holdings, mounted, userId]);
-
-  useEffect(() => {
-    if (mounted) {
-      localStorage.setItem(getRateStorageKey(userId), String(inrToAedRate));
-    }
-  }, [inrToAedRate, mounted, userId]);
-
-  const computedHoldings = useMemo(
-    () => holdings.map((holding) => computeHolding(holding, inrToAedRate)),
-    [holdings, inrToAedRate]
-  );
-
-  const summary = useMemo(() => {
-    const totalInvested = computedHoldings.reduce((sum, holding) => sum + holding.investedAmountAed, 0);
-    const totalValue = computedHoldings.reduce((sum, holding) => sum + holding.currentValueAed, 0);
-    const totalGainLoss = computedHoldings.reduce((sum, holding) => sum + holding.gainLossAed, 0);
-    const totalGainLossPct = totalInvested ? (totalGainLoss / totalInvested) * 100 : 0;
-
-    return { totalInvested, totalValue, totalGainLoss, totalGainLossPct };
-  }, [computedHoldings]);
-
-  const refreshPrices = useCallback(async () => {
-    setIsRefreshing(true);
-
-    try {
-      const response = await fetch("/api/prices/refresh-all", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ holdings }),
-      });
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error("Refresh failed");
-      }
-
-      const now = new Date().toISOString();
-      setLastRefresh(now);
-
-      setHoldings((previous) => {
-        const updated = [...previous];
-
-        for (const result of data.results) {
-          if (!result.success || !result.data) continue;
-
-          if (result.source === "currency") {
-            const rates = result.data;
-            if (rates?.rates?.INR) {
-              setInrToAedRate(1 / rates.rates.INR);
-            }
-          }
-
-          if (result.source === "indian-mf") {
-            const navData = result.data as { schemeCode: string; nav: number }[];
-            for (const nav of navData) {
-              const index = updated.findIndex((holding) => holding.schemeCode === nav.schemeCode);
-              if (index !== -1) {
-                updated[index] = { ...updated[index], currentPrice: nav.nav, lastPriceUpdate: now };
-              }
-            }
-          }
-
-          if (result.source === "indian-stocks") {
-            const quotes = result.data as Record<string, { price: number }>;
-            for (const [ticker, quote] of Object.entries(quotes)) {
-              const index = updated.findIndex(
-                (holding) =>
-                  holding.ticker === ticker || holding.ticker === `NSE:${ticker}`
-              );
-              if (index !== -1) {
-                updated[index] = { ...updated[index], currentPrice: quote.price, lastPriceUpdate: now };
-              }
-            }
-          }
-
-          if (result.source === "us-etfs") {
-            const quotes = result.data as Record<string, { close: string }>;
-            for (const [symbol, quote] of Object.entries(quotes)) {
-              const index = updated.findIndex((holding) => holding.ticker === symbol);
-              if (index !== -1) {
-                updated[index] = { ...updated[index], currentPrice: parseFloat(quote.close), lastPriceUpdate: now };
-              }
-            }
-          }
-
-          if (result.source === "uae-stocks") {
-            const quotes = result.data as Record<string, { lastradeprice: number }>;
-            for (const [symbol, quote] of Object.entries(quotes)) {
-              const index = updated.findIndex((holding) => holding.ticker === symbol);
-              if (index !== -1 && quote.lastradeprice > 0) {
-                updated[index] = { ...updated[index], currentPrice: quote.lastradeprice, lastPriceUpdate: now };
-              }
-            }
-          }
-
-          if (result.source === "crypto") {
-            const prices = result.data as Record<string, { usd: number; aed: number }>;
-            if (prices.bitcoin) {
-              const index = updated.findIndex((holding) => holding.ticker === "BTC");
-              if (index !== -1) {
-                const btcPrice = updated[index].currency === "AED" ? prices.bitcoin.aed : prices.bitcoin.usd;
-                updated[index] = { ...updated[index], currentPrice: btcPrice, lastPriceUpdate: now };
-              }
-            }
-          }
-        }
-
-        return updated;
-      });
-    } catch (error) {
-      console.error("Price refresh error:", error);
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [holdings]);
-
-  useEffect(() => {
-    function handleRefresh() {
-      refreshPrices();
-    }
-
-    window.addEventListener("portflow:refresh-prices", handleRefresh);
-    return () => window.removeEventListener("portflow:refresh-prices", handleRefresh);
-  }, [refreshPrices]);
-
-  useEffect(() => {
-    window.dispatchEvent(
-      new CustomEvent("portflow:refresh-state", {
-        detail: { refreshing: isRefreshing },
-      })
-    );
-  }, [isRefreshing]);
-
-  useEffect(() => {
-    function handleTouchStart(event: TouchEvent) {
-      if (window.scrollY > 0 || isRefreshing) {
-        touchStartYRef.current = null;
-        pullingRef.current = false;
-        return;
-      }
-
-      touchStartYRef.current = event.touches[0]?.clientY ?? null;
-      pullingRef.current = false;
-    }
-
-    function handleTouchMove(event: TouchEvent) {
-      if (touchStartYRef.current === null || isRefreshing) {
-        return;
-      }
-
-      const currentY = event.touches[0]?.clientY ?? touchStartYRef.current;
-      const delta = currentY - touchStartYRef.current;
-
-      if (delta <= 0 || window.scrollY > 0) {
-        setPullDistance(0);
-        pullingRef.current = false;
-        return;
-      }
-
-      const damped = Math.min(delta * 0.45, 96);
-      pullingRef.current = true;
-      setPullDistance(damped);
-
-      if (damped > 6) {
-        event.preventDefault();
-      }
-    }
-
-    function handleTouchEnd() {
-      if (pullingRef.current && pullDistance >= 72 && !isRefreshing) {
-        refreshPrices();
-      }
-
-      touchStartYRef.current = null;
-      pullingRef.current = false;
-      setPullDistance(0);
-    }
-
-    window.addEventListener("touchstart", handleTouchStart, { passive: true });
-    window.addEventListener("touchmove", handleTouchMove, { passive: false });
-    window.addEventListener("touchend", handleTouchEnd, { passive: true });
-
-    return () => {
-      window.removeEventListener("touchstart", handleTouchStart);
-      window.removeEventListener("touchmove", handleTouchMove);
-      window.removeEventListener("touchend", handleTouchEnd);
-    };
-  }, [isRefreshing, pullDistance, refreshPrices]);
-
-  useEffect(() => {
-    function handleToggleVisibility(event: Event) {
-      const detail = (event as CustomEvent<{ visible: boolean }>).detail;
-      if (detail && typeof detail.visible === "boolean") {
-        setIsAmountsVisible(detail.visible);
-      } else {
-        setIsAmountsVisible((current) => !current);
-      }
-    }
-
-    function publishVisibilityState() {
-      window.dispatchEvent(
-        new CustomEvent("portflow:visibility-state", {
-          detail: { visible: isAmountsVisible },
-        })
-      );
-    }
-
-    window.addEventListener("portflow:toggle-visibility", handleToggleVisibility as EventListener);
-    publishVisibilityState();
-
-    return () => window.removeEventListener("portflow:toggle-visibility", handleToggleVisibility as EventListener);
-  }, [isAmountsVisible]);
+  const [viewingHolding, setViewingHolding] = useState<Holding | null>(null);
+  const {
+    mounted,
+    holdings,
+    inrToAedRate,
+    isAmountsVisible,
+    isRefreshing,
+    isPullRefreshing,
+    pullDistance,
+    computedHoldings,
+    summary,
+    snapshots,
+    saveHolding,
+    deleteHolding,
+    updatePrice,
+  } = useDashboardState();
 
   const handleSaveHolding = (holding: Holding) => {
-    if (editingHolding) {
-      setHoldings((current) => current.map((item) => (item.id === holding.id ? holding : item)));
-    } else {
-      setHoldings((current) => [{ ...holding, id: generateId() }, ...current]);
-    }
-
+    saveHolding(holding);
     setModalOpen(false);
     setEditingHolding(null);
   };
@@ -337,24 +71,45 @@ export default function DashboardPage() {
   };
 
   const handleDelete = (id: string) => {
-    setHoldings((current) => current.filter((holding) => holding.id !== id));
+    deleteHolding(id);
   };
 
   const handlePriceUpdate = (id: string, price: number) => {
-    setHoldings((current) =>
-      current.map((holding) => (holding.id === id ? { ...holding, currentPrice: price } : holding))
-    );
+    updatePrice(id, price);
   };
+  const trendChartData = useMemo(
+    () =>
+      snapshots.map((snapshot) => ({
+        date: snapshot.snapshotDate,
+        invested: holdings.reduce(
+          (sum, holding) => sum + getInvestedAmountAedOnDate(holding, snapshot.snapshotDate, inrToAedRate),
+          0
+        ),
+        value: snapshot.totalValueAed,
+      })),
+    [holdings, inrToAedRate, snapshots]
+  );
+  const previousTrendPoint = trendChartData.length > 1 ? trendChartData[trendChartData.length - 2] : null;
+  const latestTrendPoint = trendChartData[trendChartData.length - 1] ?? null;
+  const latestGainLoss = latestTrendPoint ? latestTrendPoint.value - latestTrendPoint.invested : 0;
+  const previousGainLoss = previousTrendPoint ? previousTrendPoint.value - previousTrendPoint.invested : 0;
+  const dailyChange = latestTrendPoint && previousTrendPoint
+    ? latestGainLoss - previousGainLoss
+    : 0;
+  const dailyChangePercent = previousTrendPoint?.value
+    ? (dailyChange / previousTrendPoint.value) * 100
+    : 0;
 
   if (!mounted) {
     return (
       <div className="space-y-6">
         <div className="skeleton h-10 w-56" />
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {[1, 2, 3, 4].map((item) => (
-            <div key={item} className="skeleton h-32 rounded-2xl" />
+            <div key={item} className="skeleton h-32 rounded-xl" />
           ))}
         </div>
+        <div className="skeleton h-[22rem] rounded-2xl" />
         <div className="grid gap-4 xl:grid-cols-3">
           {[1, 2, 3].map((item) => (
             <div key={item} className="skeleton h-72 rounded-2xl" />
@@ -370,8 +125,8 @@ export default function DashboardPage() {
       <div
         className="pointer-events-none fixed left-1/2 top-[5.25rem] z-30 flex -translate-x-1/2 justify-center transition-all duration-150 sm:top-[6.25rem]"
         style={{
-          transform: `translate(-50%, ${pullDistance ? Math.min(pullDistance - 24, 36) : -28}px)`,
-          opacity: isRefreshing || pullDistance > 0 ? 1 : 0,
+          transform: `translate(-50%, ${pullDistance ? Math.min(pullDistance - 24, 36) : isPullRefreshing ? 36 : -28}px)`,
+          opacity: isPullRefreshing || pullDistance > 0 ? 1 : 0,
         }}
       >
         <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 shadow-sm">
@@ -393,35 +148,28 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-        <SummaryCard
-          label="Total Portfolio Value"
-          value={isAmountsVisible ? formatMoney(summary.totalValue, "AED") : `${summary.totalGainLossPct.toFixed(2)}%`}
-          subValue={isAmountsVisible ? "Base currency: AED" : "Overall portfolio return"}
-        />
-        <SummaryCard
-          label="Total Invested"
-          value={isAmountsVisible ? formatMoney(summary.totalInvested, "AED") : `${summary.totalGainLossPct.toFixed(2)}%`}
-          subValue={isAmountsVisible ? `${holdings.length} holdings` : "Overall return"}
-        />
-        <SummaryCard
-          label="Total Gain / Loss"
-          value={isAmountsVisible ? formatMoney(summary.totalGainLoss, "AED") : `${summary.totalGainLossPct.toFixed(2)}%`}
-          subValue={`${summary.totalGainLossPct.toFixed(2)}% overall`}
-          positive={summary.totalGainLoss >= 0}
-        />
-        <SummaryCard
-          label="INR to AED"
-          value={inrToAedRate.toFixed(5)}
-          subValue="FX rate in use"
-        />
-      </section>
+      <PortfolioSummaryStrip
+        portfolioValue={summary.totalValue}
+        investedAmount={summary.totalInvested}
+        totalGainLoss={summary.totalGainLoss}
+        totalGainLossPercent={summary.totalGainLossPct}
+        dailyChange={dailyChange}
+        dailyChangePercent={dailyChangePercent}
+        fxRate={inrToAedRate ? 1 / inrToAedRate : 0}
+        isAmountsVisible={isAmountsVisible}
+      />
+
+      <PortfolioTrendChart
+        chartData={trendChartData}
+        isAmountsVisible={isAmountsVisible}
+      />
 
       <AllocationCharts holdings={computedHoldings} totalValue={summary.totalValue} />
 
       <HoldingsTable
         holdings={computedHoldings}
         isAmountsVisible={isAmountsVisible}
+        onView={setViewingHolding}
         onEdit={handleEdit}
         onDelete={handleDelete}
         onPriceUpdate={handlePriceUpdate}
@@ -442,28 +190,14 @@ export default function DashboardPage() {
           }}
         />
       )}
-    </div>
-  );
-}
 
-function SummaryCard({
-  label,
-  value,
-  subValue,
-  positive,
-}: {
-  label: string;
-  value: string;
-  subValue?: string;
-  positive?: boolean;
-}) {
-  return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-5">
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className={`mt-2 text-xl font-semibold leading-tight sm:text-2xl ${positive === undefined ? "text-slate-900" : positive ? "text-green-600" : "text-red-600"}`}>
-        {value}
-      </p>
-      {subValue ? <p className="mt-1 text-xs text-slate-500 sm:text-sm">{subValue}</p> : null}
+      {viewingHolding && (
+        <HoldingDetailsModal
+          holding={viewingHolding}
+          inrToAedRate={inrToAedRate}
+          onClose={() => setViewingHolding(null)}
+        />
+      )}
     </div>
   );
 }

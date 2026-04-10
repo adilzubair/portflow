@@ -10,26 +10,25 @@ export interface ExchangeRates {
 }
 
 export async function fetchExchangeRates(
-  base: string = 'AED',
-  targets: string[] = ['USD', 'INR']
 ): Promise<ExchangeRates | null> {
   try {
-    const quotes = targets.join(',');
-    const res = await fetch(
-      `https://api.frankfurter.dev/v2/rates?base=${base}&quotes=${quotes}`,
-      { next: { revalidate: 3600 } } // Cache 1 hour
-    );
+    // AED is pegged to USD (1 USD = 3.6725 AED). We fetch USD to INR.
+    const res = await fetch(`https://api.frankfurter.app/latest?from=USD&to=INR`, {
+      next: { revalidate: 3600 },
+    });
     if (!res.ok) throw new Error(`Frankfurter error: ${res.status}`);
-    const rows = (await res.json()) as Array<{ date: string; base: string; quote: string; rate: number }>;
-
-    return {
-      base,
-      date: rows[0]?.date || new Date().toISOString().slice(0, 10),
-      rates: rows.reduce<Record<string, number>>((acc, row) => {
-        acc[row.quote] = row.rate;
-        return acc;
-      }, {}),
+    const data: ExchangeRates = await res.json();
+    
+    // Process Rates to simulate AED base
+    const inrPerUsd = data.rates.INR;
+    const inrPerAed = inrPerUsd / 3.6725;
+    
+    const convertedData: ExchangeRates = {
+      base: 'AED',
+      date: data.date,
+      rates: { INR: inrPerAed },
     };
+    return convertedData;
   } catch (err) {
     console.error('Frankfurter: failed to fetch exchange rates:', err);
     return null;

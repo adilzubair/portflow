@@ -29,6 +29,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+*.log
 
 # env files (can opt-in for committing if needed)
 .env*
@@ -39,6 +40,20 @@ yarn-error.log*
 
 # old project (archived)
 /investment-portfolio-app
+/backups
+*.zip
+
+# local editor / agent files
+/.vscode
+/.claude
+.codex-dev.log
+.codex-dev.err.log
+
+# local docs output
+/docs/logs
+
+# local db migrations not for this remote
+/supabase/migrations/*.sql
 
 # typescript
 *.tsbuildinfo
