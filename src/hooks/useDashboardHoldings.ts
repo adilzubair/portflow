@@ -1,23 +1,65 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Holding } from "@/lib/constants";
 import {
   DEFAULT_INR_TO_AED_RATE,
   loadDashboardPersistenceState,
   persistDashboardRate,
   persistLocalHoldings,
+  syncDashboardHoldingsFromRemote,
   upsertRemoteHoldingsState,
   deleteRemoteHoldingState,
 } from "@/lib/dashboard/persistence";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
 import { generateId } from "@/lib/utils";
 
+const REMOTE_SYNC_INTERVAL_MS = 30 * 1000;
+const REMOTE_SYNC_COOLDOWN_MS = 2500;
+
+function getHoldingsSignature(holdings: Holding[]) {
+  return JSON.stringify(holdings);
+}
+
 export function useDashboardHoldings() {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [inrToAedRate, setInrToAedRate] = useState(DEFAULT_INR_TO_AED_RATE);
   const [mounted, setMounted] = useState(false);
   const [userId, setUserId] = useState("default");
+  const holdingsRef = useRef<Holding[]>([]);
+  const lastLocalMutationAtRef = useRef(0);
+  const remoteSyncInFlightRef = useRef(false);
+
+  useEffect(() => {
+    holdingsRef.current = holdings;
+  }, [holdings]);
+
+  const syncFromRemote = useCallback(async (force = false) => {
+    if (!mounted || userId === "default" || remoteSyncInFlightRef.current) {
+      return;
+    }
+
+    if (!force && Date.now() - lastLocalMutationAtRef.current < REMOTE_SYNC_COOLDOWN_MS) {
+      return;
+    }
+
+    remoteSyncInFlightRef.current = true;
+
+    try {
+      const remoteHoldings = await syncDashboardHoldingsFromRemote(userId);
+      if (!remoteHoldings) {
+        return;
+      }
+
+      if (getHoldingsSignature(remoteHoldings) !== getHoldingsSignature(holdingsRef.current)) {
+        setHoldings(remoteHoldings);
+      }
+    } catch (error) {
+      console.error("Failed to sync holdings from Supabase:", error);
+    } finally {
+      remoteSyncInFlightRef.current = false;
+    }
+  }, [mounted, userId]);
 
   useEffect(() => {
     let active = true;
@@ -29,6 +71,7 @@ export function useDashboardHoldings() {
           return;
         }
 
+        holdingsRef.current = state.holdings;
         setUserId(state.userId);
         setHoldings(state.holdings);
         setInrToAedRate(state.inrToAedRate);
@@ -51,6 +94,7 @@ export function useDashboardHoldings() {
       return;
     }
 
+    lastLocalMutationAtRef.current = Date.now();
     persistLocalHoldings(userId, holdings);
 
     const timeoutId = window.setTimeout(async () => {
@@ -69,6 +113,37 @@ export function useDashboardHoldings() {
       persistDashboardRate(userId, inrToAedRate);
     }
   }, [inrToAedRate, mounted, userId]);
+
+  useEffect(() => {
+    if (!mounted || userId === "default") {
+      return;
+    }
+
+    const handleWindowFocus = () => {
+      void syncFromRemote(true);
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        void syncFromRemote(true);
+      }
+    };
+
+    const intervalId = window.setInterval(() => {
+      if (!document.hidden) {
+        void syncFromRemote();
+      }
+    }, REMOTE_SYNC_INTERVAL_MS);
+
+    window.addEventListener("focus", handleWindowFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [mounted, syncFromRemote, userId]);
 
   const saveHolding = useCallback((holding: Holding) => {
     const normalizedHolding = normalizeHoldings([holding]).normalized[0];

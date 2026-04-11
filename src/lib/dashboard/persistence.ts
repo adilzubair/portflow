@@ -77,6 +77,24 @@ export function persistDashboardRate(userId: string, inrToAedRate: number) {
   localStorage.setItem(getRateStorageKey(userId), String(inrToAedRate));
 }
 
+export async function syncDashboardHoldingsFromRemote(userId: string) {
+  const supabase = createClient();
+  const remoteHoldings = await fetchRemoteHoldings(supabase, userId);
+
+  if (!remoteHoldings) {
+    return null;
+  }
+
+  const { normalized, changed } = normalizeHoldings(remoteHoldings);
+  persistLocalHoldings(userId, normalized);
+
+  if (changed) {
+    await upsertRemoteHoldings(supabase, userId, normalized);
+  }
+
+  return normalized;
+}
+
 export async function upsertRemoteHoldingsState(userId: string, holdings: Holding[]) {
   const supabase = createClient();
   await upsertRemoteHoldings(supabase, userId, holdings);
