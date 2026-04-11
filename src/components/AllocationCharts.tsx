@@ -142,20 +142,6 @@ export default function AllocationCharts({ holdings, totalValue }: Props) {
     };
   }, [chartCards.length]);
 
-  useEffect(() => {
-    const defaultCard = mobileCardRefs.current[0];
-
-    if (!defaultCard) {
-      return;
-    }
-
-    defaultCard.scrollIntoView({
-      behavior: "auto",
-      block: "nearest",
-      inline: "nearest",
-    });
-  }, []);
-
   return (
     <section>
       <div className="sm:hidden">
