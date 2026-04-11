@@ -127,8 +127,8 @@ function SummaryCard({
 
   return (
     <div className={`dashboard-card relative overflow-hidden rounded-xl border border-border-default bg-bg-card shadow-sm ${isPrimary ? "p-6 sm:p-7" : "p-5 sm:p-6"}`}>
-      <div className={`text-sm ${isPrimary ? "font-medium text-text-secondary" : "text-text-secondary"}`}>{label}</div>
-      <div className={`relative z-10 mt-3 font-semibold leading-tight ${isPrimary ? `text-3xl sm:text-[2.15rem] ${toneClass}` : `text-2xl sm:text-[2rem] ${toneClass}`}`}>
+      <div className={`text-sm ${isPrimary ? "pl-1 font-medium text-text-secondary" : "text-text-secondary"}`}>{label}</div>
+      <div className={`relative z-10 ${isPrimary ? "mt-1" : "mt-3"} font-semibold leading-tight ${isPrimary ? `text-3xl sm:text-[2.15rem] ${toneClass}` : `text-2xl sm:text-[2rem] ${toneClass}`}`}>
         {value}
       </div>
       <div className={`relative z-10 ${isPrimary ? "mt-2 text-sm text-text-muted" : "mt-1.5 text-sm text-text-muted"}`}>{subtext}</div>
@@ -227,7 +227,7 @@ export default function PortfolioSummaryStrip({
 
       <section className="hidden gap-3 sm:grid sm:grid-cols-2 sm:gap-4 xl:grid-cols-[1.3fr_1fr_1fr]">
         <SummaryCard
-          label="Portfolio Value"
+          label={`Holdings (${holdingsCount})`}
           value={desktopPortfolioValue}
           subtext={`Invested ${desktopInvested}`}
           isPrimary

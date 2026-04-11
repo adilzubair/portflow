@@ -13,7 +13,7 @@ interface Props {
 
 export default function AllocationCharts({ holdings, totalValue }: Props) {
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [mobileChartIndex, setMobileChartIndex] = useState(1);
+  const [mobileChartIndex, setMobileChartIndex] = useState(0);
   const mobileTrackRef = useRef<HTMLDivElement | null>(null);
   const mobileCardRefs = useRef<Array<HTMLDivElement | null>>([]);
   const byPlatform = getAllocation(holdings, "platform", totalValue);
@@ -143,7 +143,7 @@ export default function AllocationCharts({ holdings, totalValue }: Props) {
   }, [chartCards.length]);
 
   useEffect(() => {
-    const defaultCard = mobileCardRefs.current[1];
+    const defaultCard = mobileCardRefs.current[0];
 
     if (!defaultCard) {
       return;

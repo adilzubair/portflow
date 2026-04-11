@@ -67,9 +67,9 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
     const getValue = (h: ComputedHolding): number | string => {
       switch (sortKey) {
         case "asset": return h.assetName.toLowerCase();
-        case "platform": return h.platform.toLowerCase();
         case "qty": return h.quantity;
         case "value": return h.currentValue;
+        case "allocation": return h.investedAmountAed;
         case "currentAed": return h.currentValueAed;
         case "pl": return h.gainLossAed;
         case "plPct": return h.gainLossPct;
@@ -85,6 +85,11 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
       return 0;
     });
   }, [filteredHoldings, sortKey, sortDir]);
+
+  const totalInvestedAed = useMemo(
+    () => filteredHoldings.reduce((sum, holding) => sum + holding.investedAmountAed, 0),
+    [filteredHoldings]
+  );
 
   function handleSort(key: string) {
     if (sortKey === key) {
@@ -346,10 +351,10 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
             <tr>
               <th className="w-10 whitespace-nowrap px-3 py-3 text-center">#</th>
               <SortHeader label="Asset" sortKey="asset" currentKey={sortKey} dir={sortDir} onSort={handleSort} className="px-5 py-3" />
-              <SortHeader label="Platform" sortKey="platform" currentKey={sortKey} dir={sortDir} onSort={handleSort} />
-              <SortHeader label="Qty" sortKey="qty" currentKey={sortKey} dir={sortDir} onSort={handleSort} />
+              <SortHeader label="Qty" sortKey="qty" currentKey={sortKey} dir={sortDir} onSort={handleSort} className="px-3 py-3 text-center" />
               <th className="px-3 py-3">Market Price</th>
-              <SortHeader label="Value" sortKey="value" currentKey={sortKey} dir={sortDir} onSort={handleSort} />
+              <SortHeader label="Value" sortKey="value" currentKey={sortKey} dir={sortDir} onSort={handleSort} className="px-3 py-3 text-center" />
+              <SortHeader label="Allocation" sortKey="allocation" currentKey={sortKey} dir={sortDir} onSort={handleSort} />
               <SortHeader sortKey="currentAed" currentKey={sortKey} dir={sortDir} onSort={handleSort}>
                 <div>Current</div>
                 <div>(Invested)</div>
@@ -379,8 +384,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                       <span>{holding.geography}</span>
                     </div>
                   </td>
-                  <td className="px-3 py-3.5 text-slate-600">{holding.platform}</td>
-                  <td className="px-3 py-3.5 font-mono text-slate-600">
+                  <td className="px-3 py-3.5 text-center font-mono text-slate-600">
                     {holding.quantity < 1 ? holding.quantity.toFixed(7) : holding.quantity.toLocaleString()}
                   </td>
                   <td className="px-3 py-3.5">
@@ -394,8 +398,13 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                       placeholder="0"
                     />
                   </td>
-                  <td className="px-3 py-3.5 font-mono text-slate-600">
+                  <td className="px-3 py-3.5 text-center font-mono text-slate-600">
                     {formatOrMask(holding.currentValue, holding.currency, isAmountsVisible)}
+                  </td>
+                  <td className="px-3 py-3.5 text-center">
+                    <div className="font-mono text-slate-900">
+                      {totalInvestedAed ? `${((holding.investedAmountAed / totalInvestedAed) * 100).toFixed(2)}%` : "0.00%"}
+                    </div>
                   </td>
                   <td className="px-3 py-3.5">
                     <div className="font-mono text-slate-900">
