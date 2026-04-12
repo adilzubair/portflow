@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { type Holding } from "@/lib/constants";
+import { tap, success as hapticSuccess, destructive as hapticDestructive, medium } from "@/lib/haptics";
 import { DEFAULT_INR_TO_AED_RATE, getRateStorageKey } from "@/lib/dashboard/persistence";
 import { buildBackfilledSnapshots } from "@/lib/history-backfill";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
@@ -120,6 +121,7 @@ export default function SettingsPage() {
       const rebuiltSnapshots = buildBackfilledSnapshots(normalized, existingSnapshots, inrToAedRate);
 
       await replacePortfolioSnapshots(userId, rebuiltSnapshots);
+      hapticSuccess();
       router.refresh();
     } catch (error) {
       setDataError(error instanceof Error ? error.message : "Failed to rebuild history");
@@ -193,7 +195,7 @@ export default function SettingsPage() {
             <h2 className="font-display text-xl font-semibold tracking-[-0.03em] text-text-primary">Service health</h2>
           </div>
           <button
-            onClick={runTests}
+            onClick={() => { tap(); runTests(); }}
             disabled={testing}
             className="rounded-full bg-accent-violet px-5 py-3 text-sm font-semibold text-bg-primary transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-55"
           >
@@ -241,14 +243,14 @@ export default function SettingsPage() {
               }}
             />
 
-            <ActionButton label="Import holdings" onClick={handleImport} />
+            <ActionButton label="Import holdings" onClick={() => { tap(); handleImport(); }} />
 
             {resetConfirming ? (
               <div className="flex flex-col gap-2 rounded-[1.2rem] border border-accent-loss/20 bg-accent-loss-bg p-4">
                 <p className="text-xs font-medium text-accent-loss">This cannot be undone.</p>
                 <div className="flex gap-2">
                   <button
-                    onClick={handleReset}
+                    onClick={() => { hapticDestructive(); handleReset(); }}
                     disabled={resetting}
                     className="rounded-full bg-accent-loss px-3 py-1.5 text-xs font-semibold text-white transition hover:brightness-105 disabled:opacity-55"
                   >
@@ -266,7 +268,7 @@ export default function SettingsPage() {
               <ActionButton
                 label="Reset storage"
                 destructive
-                onClick={() => { setDataError(null); setResetConfirming(true); }}
+                onClick={() => { medium(); setDataError(null); setResetConfirming(true); }}
               />
             )}
           </div>
@@ -286,7 +288,7 @@ export default function SettingsPage() {
                 </p>
               </div>
               <button
-                onClick={rebuildHistory}
+                onClick={() => { tap(); rebuildHistory(); }}
                 disabled={rebuildingHistory}
                 className="rounded-full border border-border-default bg-bg-card px-4 py-2.5 text-sm font-semibold text-text-primary transition hover:bg-bg-card-hover disabled:cursor-not-allowed disabled:opacity-55"
               >

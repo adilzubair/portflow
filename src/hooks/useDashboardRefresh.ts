@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import type { Holding } from "@/lib/constants";
 import { refreshDashboardPrices, type RefreshFailure } from "@/lib/dashboard/refresh";
+import { threshold as hapticThreshold, success as hapticSuccess, destructive as hapticError } from "@/lib/haptics";
 
 const AUTO_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 const MAX_PULL_DISTANCE = 96;
@@ -30,6 +31,7 @@ export function useDashboardRefresh({
   const pullDistanceRef = useRef(0);
   const touchStartYRef = useRef<number | null>(null);
   const pullingRef = useRef(false);
+  const crossedThresholdRef = useRef(false);
 
   useEffect(() => {
     holdingsRef.current = holdings;
@@ -56,12 +58,14 @@ export function useDashboardRefresh({
       setHoldings(refreshedState.holdings);
       setRefreshFailures(refreshedState.failures);
       setRefreshError(null);
+      hapticSuccess();
 
       if (refreshedState.inrToAedRate) {
         setInrToAedRate(refreshedState.inrToAedRate);
       }
     } catch (error) {
       setRefreshError(error instanceof Error ? error.message : "Refresh failed");
+      hapticError();
       console.error("Price refresh error:", error);
     } finally {
       isRefreshingRef.current = false;
@@ -135,6 +139,7 @@ export function useDashboardRefresh({
 
       touchStartYRef.current = event.touches[0]?.clientY ?? null;
       pullingRef.current = false;
+      crossedThresholdRef.current = false;
     }
 
     function handleTouchMove(event: TouchEvent) {
@@ -156,6 +161,14 @@ export function useDashboardRefresh({
       pullDistanceRef.current = damped;
       pullingRef.current = true;
       setPullDistance(damped);
+
+      // Haptic feedback when crossing the release threshold
+      if (damped >= PULL_THRESHOLD && !crossedThresholdRef.current) {
+        crossedThresholdRef.current = true;
+        hapticThreshold();
+      } else if (damped < PULL_THRESHOLD) {
+        crossedThresholdRef.current = false;
+      }
 
       if (damped > 6) {
         event.preventDefault();

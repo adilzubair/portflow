@@ -2,6 +2,7 @@
 
 import { memo, useCallback, useMemo, useState } from "react";
 import { ASSET_CLASS_OPTIONS, GEOGRAPHY_OPTIONS, RISK_OPTIONS, type ComputedHolding, type Holding } from "@/lib/constants";
+import { tap, toggle, medium, destructive as hapticDestructive } from "@/lib/haptics";
 import { formatMoney, formatOrMask, timeAgo } from "@/lib/utils";
 
 interface Props {
@@ -93,6 +94,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
   );
 
   const handleSort = useCallback((key: string) => {
+    tap();
     if (sortKey === key) {
       if (sortDir === "desc") {
         setSortDir("asc");
@@ -107,10 +109,12 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
   }, [sortKey, sortDir]);
 
   function handleDeleteClick(holding: ComputedHolding) {
+    medium();
     setPendingDeleteId(holding.id);
   }
 
   function confirmDelete(id: string) {
+    hapticDestructive();
     onDelete(id);
     setPendingDeleteId(null);
     setActionMenuId(null);
@@ -162,7 +166,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
               {filteredHoldings.length} of {holdings.length}
             </div>
             <button
-              onClick={onAddHolding}
+              onClick={() => { tap(); onAddHolding(); }}
               className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-accent-violet text-bg-primary shadow-sm transition hover:brightness-105"
               aria-label="Add holding"
             >
@@ -184,7 +188,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setMobileFiltersOpen((current) => !current)}
+              onClick={() => { tap(); setMobileFiltersOpen((current) => !current); }}
               className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
               aria-expanded={mobileFiltersOpen}
               aria-label="Toggle filters"
@@ -261,7 +265,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
           </span>
           <button
             type="button"
-            onClick={() => setMobileColumn3Mode((mode) => (mode === "value" ? "return" : "value"))}
+            onClick={() => { toggle(); setMobileColumn3Mode((mode) => (mode === "value" ? "return" : "value")); }}
             className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 active:bg-slate-100"
             aria-label="Toggle current and gain/loss view"
           >
@@ -277,7 +281,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
           filteredHoldings.map((holding) => (
             <div key={holding.id} className="bg-white">
               <div className="flex items-center justify-between gap-3 px-4 py-3">
-                <button type="button" className="min-w-0 flex-1 pr-3 text-left" onClick={() => onView(holding)}>
+                <button type="button" className="min-w-0 flex-1 pr-3 text-left" onClick={() => { tap(); onView(holding); }}>
                   <div className="truncate text-sm font-semibold text-slate-900">{getMobileAssetName(holding.assetName)}</div>
                   <div className="mt-0.5 text-xs text-slate-500">{holding.ticker || "No ticker"}</div>
                 </button>
@@ -307,7 +311,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
 
                 <button
                   type="button"
-                  onClick={() => setActionMenuId((current) => (current === holding.id ? null : holding.id))}
+                  onClick={() => { tap(); setActionMenuId((current) => (current === holding.id ? null : holding.id)); }}
                   className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600"
                   aria-label={`Actions for ${holding.assetName}`}
                 >
@@ -444,6 +448,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                     <button
                       onClick={(event) => {
                         event.stopPropagation();
+                        tap();
                         setActionMenuId(actionMenuId === holding.id ? null : holding.id);
                       }}
                       className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
