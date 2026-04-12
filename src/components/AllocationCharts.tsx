@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PieChart, Pie, Cell, Tooltip } from "recharts";
 import { type ComputedHolding, DARK_PIE_COLORS, LIGHT_ASSET_CLASS_COLORS, LIGHT_GEOGRAPHY_COLORS, LIGHT_PLATFORM_COLORS } from "@/lib/constants";
+import { tap } from "@/lib/haptics";
 import MeasuredChart from "@/components/MeasuredChart";
 import { formatMoney, getAllocation } from "@/lib/utils";
 
@@ -169,7 +170,7 @@ export default function AllocationCharts({ holdings, totalValue }: Props) {
 
           <button
             type="button"
-            onClick={() => scrollToMobileChart(mobileChartIndex - 1)}
+            onClick={() => { tap(); scrollToMobileChart(mobileChartIndex - 1); }}
             className="absolute left-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border shadow-sm"
             style={{
               borderColor: isDarkMode ? "var(--color-border-default)" : "#e2e8f0",
@@ -185,7 +186,7 @@ export default function AllocationCharts({ holdings, totalValue }: Props) {
 
           <button
             type="button"
-            onClick={() => scrollToMobileChart(mobileChartIndex + 1)}
+            onClick={() => { tap(); scrollToMobileChart(mobileChartIndex + 1); }}
             className="absolute right-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border shadow-sm"
             style={{
               borderColor: isDarkMode ? "var(--color-border-default)" : "#e2e8f0",
@@ -206,7 +207,7 @@ export default function AllocationCharts({ holdings, totalValue }: Props) {
               <button
                 key={chart.title}
                 type="button"
-                onClick={() => scrollToMobileChart(index)}
+                onClick={() => { tap(); scrollToMobileChart(index); }}
                 className={`h-2 rounded-full transition-all ${index === mobileChartIndex ? "w-5 bg-slate-700" : "w-2 bg-slate-300"}`}
                 aria-label={`Show ${chart.title} chart`}
               />
