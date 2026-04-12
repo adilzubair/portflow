@@ -22,11 +22,14 @@ function createPriceTask(source: string, loader: () => Promise<unknown>): Promis
       success: true,
       data,
     }))
-    .catch((error: unknown) => ({
-      source,
-      success: false,
-      error: error instanceof Error ? error.message : `Failed to fetch ${source}`,
-    }));
+    .catch((error: unknown) => {
+      console.error(`[prices/${source}]`, error);
+      return {
+        source,
+        success: false,
+        error: `Failed to fetch ${source}`,
+      };
+    });
 }
 
 function unique(values: string[]) {
@@ -120,11 +123,9 @@ export async function POST(request: Request) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
+    console.error("[prices/refresh-all]", error);
     return Response.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Failed to refresh prices",
-      },
+      { success: false, error: "Failed to refresh prices" },
       { status: 500 }
     );
   }

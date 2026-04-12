@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { ASSET_CLASS_OPTIONS, GEOGRAPHY_OPTIONS, RISK_OPTIONS, type ComputedHolding, type Holding } from "@/lib/constants";
 import { formatMoney, formatOrMask, timeAgo } from "@/lib/utils";
 
@@ -23,6 +23,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
     search: "",
   });
   const [actionMenuId, setActionMenuId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [mobileColumn3Mode, setMobileColumn3Mode] = useState<"value" | "return">("value");
   const [sortKey, setSortKey] = useState<string | null>(null);
@@ -91,7 +92,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
     [filteredHoldings]
   );
 
-  function handleSort(key: string) {
+  const handleSort = useCallback((key: string) => {
     if (sortKey === key) {
       if (sortDir === "desc") {
         setSortDir("asc");
@@ -103,16 +104,15 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
       setSortKey(key);
       setSortDir("desc");
     }
-  }
+  }, [sortKey, sortDir]);
 
   function handleDeleteClick(holding: ComputedHolding) {
-    const shouldDelete = window.confirm(`Delete "${holding.assetName}" from your holdings?`);
+    setPendingDeleteId(holding.id);
+  }
 
-    if (!shouldDelete) {
-      return;
-    }
-
-    onDelete(holding.id);
+  function confirmDelete(id: string) {
+    onDelete(id);
+    setPendingDeleteId(null);
     setActionMenuId(null);
   }
 
@@ -317,25 +317,41 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
 
               {actionMenuId === holding.id && (
                 <div className="border-t border-slate-50 bg-slate-50/50 px-4 py-3">
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => {
-                        onEdit(holding);
-                        setActionMenuId(null);
-                      }}
-                      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm"
-                    >
-                      Edit Holding
-                    </button>
-                    <button
-                      onClick={() => {
-                        handleDeleteClick(holding);
-                      }}
-                      className="rounded-lg border border-red-100 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 shadow-sm"
-                    >
-                      Delete
-                    </button>
-                  </div>
+                  {pendingDeleteId === holding.id ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-red-600">Delete {holding.assetName}?</span>
+                      <button
+                        onClick={() => confirmDelete(holding.id)}
+                        className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white"
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        onClick={() => setPendingDeleteId(null)}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => {
+                          onEdit(holding);
+                          setActionMenuId(null);
+                        }}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm"
+                      >
+                        Edit Holding
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(holding)}
+                        className="rounded-lg border border-red-100 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 shadow-sm"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -436,25 +452,45 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                     </button>
                     {actionMenuId === holding.id && (
                       <div className="absolute right-3 top-12 z-20 min-w-28 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
-                        <button
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onEdit(holding);
-                            setActionMenuId(null);
-                          }}
-                          className="block w-full px-4 py-2.5 text-left text-xs text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleDeleteClick(holding);
-                          }}
-                          className="block w-full px-4 py-2.5 text-left text-xs text-red-600 hover:bg-slate-50"
-                        >
-                          Delete
-                        </button>
+                        {pendingDeleteId === holding.id ? (
+                          <>
+                            <div className="px-4 py-2.5 text-xs font-medium text-red-600">Delete {holding.assetName}?</div>
+                            <button
+                              onClick={(event) => { event.stopPropagation(); confirmDelete(holding.id); }}
+                              className="block w-full px-4 py-2.5 text-left text-xs font-semibold text-red-600 hover:bg-red-50"
+                            >
+                              Confirm delete
+                            </button>
+                            <button
+                              onClick={(event) => { event.stopPropagation(); setPendingDeleteId(null); }}
+                              className="block w-full px-4 py-2.5 text-left text-xs text-slate-600 hover:bg-slate-50"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onEdit(holding);
+                                setActionMenuId(null);
+                              }}
+                              className="block w-full px-4 py-2.5 text-left text-xs text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleDeleteClick(holding);
+                              }}
+                              className="block w-full px-4 py-2.5 text-left text-xs text-red-600 hover:bg-slate-50"
+                            >
+                              Delete
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
                   </td>
@@ -474,7 +510,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
   );
 }
 
-function SortHeader({
+const SortHeader = memo(function SortHeader({
   label,
   sortKey,
   currentKey,
@@ -492,39 +528,24 @@ function SortHeader({
   children?: React.ReactNode;
 }) {
   const isActive = currentKey === sortKey;
-  const [isHovered, setIsHovered] = useState(false);
   return (
     <th
-      className={`${className || "px-3 py-3"} cursor-pointer select-none transition-colors`}
+      className={`${className || "px-3 py-3"} group cursor-pointer select-none transition-colors`}
       onClick={() => onSort(sortKey)}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
       <div className="inline-flex items-center gap-1">
-        <div
-          className="leading-tight transition-colors"
-          style={{
-            color: isHovered ? "var(--color-text-primary)" : "var(--color-text-muted)",
-          }}
-        >
+        <div className="leading-tight transition-colors text-text-muted group-hover:text-text-primary">
           {children || label}
         </div>
         <span
-          className="text-[10px] transition-colors"
-          style={{
-            color: isActive
-              ? "var(--color-text-primary)"
-              : isHovered
-                ? "var(--color-text-secondary)"
-                : "var(--color-text-muted)",
-          }}
+          className={`text-[10px] transition-colors group-hover:text-text-secondary ${isActive ? "text-text-primary" : "text-text-muted"}`}
         >
           {isActive ? (dir === "asc" ? "\u25B2" : "\u25BC") : "\u21C5"}
         </span>
       </div>
     </th>
   );
-}
+});
 
 function FilterInput({
   label,
