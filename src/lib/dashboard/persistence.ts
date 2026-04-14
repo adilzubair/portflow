@@ -59,7 +59,7 @@ export async function loadDashboardPersistenceState() {
   try {
     const remoteHoldings = await fetchRemoteHoldings(supabase, userId);
 
-    if (remoteHoldings && remoteHoldings.length > 0) {
+    if (remoteHoldings) {
       const { normalized, changed } = normalizeHoldings(remoteHoldings);
       persistLocalHoldings(userId, normalized);
 
@@ -69,16 +69,14 @@ export async function loadDashboardPersistenceState() {
 
       return { userId, holdings: normalized, inrToAedRate, fxUpdatedAt };
     }
-
-    if (storedHoldings) {
-      persistLocalHoldings(userId, storedHoldings);
-      await replaceRemoteHoldings(supabase, userId, storedHoldings);
-      return { userId, holdings: storedHoldings, inrToAedRate, fxUpdatedAt };
-    }
   } catch {
     if (storedHoldings) {
       return { userId, holdings: storedHoldings, inrToAedRate, fxUpdatedAt };
     }
+  }
+
+  if (storedHoldings) {
+    return { userId, holdings: storedHoldings, inrToAedRate, fxUpdatedAt };
   }
 
   return { userId, holdings: DEFAULT_HOLDINGS, inrToAedRate, fxUpdatedAt };
