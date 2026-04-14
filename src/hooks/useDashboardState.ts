@@ -9,6 +9,7 @@ import { usePortfolioSummary } from "@/hooks/usePortfolioSummary";
 export function useDashboardState() {
   const holdingsState = useDashboardHoldings();
   const refreshState = useDashboardRefresh({
+    mounted: holdingsState.mounted,
     holdings: holdingsState.holdings,
     setHoldings: holdingsState.setHoldings,
     setInrToAedRate: holdingsState.setInrToAedRate,

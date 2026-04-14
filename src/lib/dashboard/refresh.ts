@@ -135,7 +135,7 @@ export async function refreshDashboardPrices(holdings: Holding[]) {
     }));
 
   return {
-    ...applyRefreshResults(holdings, results),
+    ...applyRefreshResults(normalizedHoldings, results),
     failures,
   };
 }

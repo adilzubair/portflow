@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import type { Holding } from "@/lib/constants";
+import { registerDashboardRefreshHandler } from "@/lib/dashboard/refresh-controller";
 import { refreshDashboardPrices, type RefreshFailure } from "@/lib/dashboard/refresh";
 
 const AUTO_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
@@ -9,6 +10,7 @@ const MAX_PULL_DISTANCE = 96;
 const PULL_THRESHOLD = 72;
 
 interface UseDashboardRefreshOptions {
+  mounted: boolean;
   holdings: Holding[];
   setHoldings: Dispatch<SetStateAction<Holding[]>>;
   setInrToAedRate: Dispatch<SetStateAction<number>>;
@@ -16,6 +18,7 @@ interface UseDashboardRefreshOptions {
 }
 
 export function useDashboardRefresh({
+  mounted,
   holdings,
   setHoldings,
   setInrToAedRate,
@@ -33,17 +36,9 @@ export function useDashboardRefresh({
   const touchStartYRef = useRef<number | null>(null);
   const pullingRef = useRef(false);
 
-  useEffect(() => {
-    holdingsRef.current = holdings;
-  }, [holdings]);
-
-  useEffect(() => {
-    isRefreshingRef.current = isRefreshing;
-  }, [isRefreshing]);
-
-  useEffect(() => {
-    pullDistanceRef.current = pullDistance;
-  }, [pullDistance]);
+  holdingsRef.current = holdings;
+  isRefreshingRef.current = isRefreshing;
+  pullDistanceRef.current = pullDistance;
 
   const refreshPrices = useCallback(async () => {
     if (isRefreshingRef.current) {
@@ -77,13 +72,14 @@ export function useDashboardRefresh({
   }, [setFxUpdatedAt, setHoldings, setInrToAedRate]);
 
   useEffect(() => {
-    function handleRefresh() {
-      void refreshPrices();
+    if (!mounted) {
+      return;
     }
 
-    window.addEventListener("portflow:refresh-prices", handleRefresh);
-    return () => window.removeEventListener("portflow:refresh-prices", handleRefresh);
-  }, [refreshPrices]);
+    return registerDashboardRefreshHandler(() => {
+      void refreshPrices();
+    });
+  }, [mounted, refreshPrices]);
 
   useEffect(() => {
     window.dispatchEvent(

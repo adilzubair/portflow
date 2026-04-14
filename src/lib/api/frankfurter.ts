@@ -15,7 +15,7 @@ export async function fetchExchangeRates(
   try {
     // AED is pegged to USD (1 USD = 3.6725 AED). We fetch USD to INR.
     const res = await fetch(`https://api.frankfurter.app/latest?from=USD&to=INR`, {
-      next: { revalidate: 300 },
+      cache: "no-store",
     });
     if (!res.ok) throw new Error(`Frankfurter error: ${res.status}`);
     const data: ExchangeRates = await res.json();

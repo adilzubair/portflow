@@ -204,7 +204,11 @@ export default function DashboardPage() {
         isAmountsVisible={isAmountsVisible}
       />
 
-      <AllocationCharts holdings={computedHoldings} totalValue={summary.totalValue} />
+      <AllocationCharts
+        holdings={computedHoldings}
+        totalValue={summary.totalValue}
+        totalInvested={summary.totalInvested}
+      />
 
       <HoldingsTable
         holdings={computedHoldings}

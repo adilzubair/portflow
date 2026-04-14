@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { requestDashboardRefresh } from "@/lib/dashboard/refresh-controller";
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 
@@ -131,7 +132,9 @@ export default function DashboardShell({
 
               <div className="flex items-center rounded-full border border-slate-200 bg-slate-50 p-1">
                 <button
-                  onClick={() => window.dispatchEvent(new CustomEvent("portflow:refresh-prices"))}
+                  onClick={() => {
+                    requestDashboardRefresh();
+                  }}
                   className={`inline-flex ${iconButtonClass}`}
                   aria-label={isRefreshing ? "Refreshing prices" : "Refresh prices"}
                 >
