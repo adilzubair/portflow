@@ -15,9 +15,6 @@ interface PriceResult {
   error?: string;
 }
 
-const MAX_REFRESH_HOLDINGS = 500;
-const MAX_SYMBOLS_PER_SOURCE = 200;
-
 function createPriceTask(source: string, loader: () => Promise<unknown>): Promise<PriceResult> {
   return loader()
     .then((data) => ({
@@ -36,47 +33,6 @@ function unique(values: string[]) {
   return [...new Set(values.filter(Boolean))];
 }
 
-function limit(values: string[]) {
-  return values.slice(0, MAX_SYMBOLS_PER_SOURCE);
-}
-
-function isHoldingLike(value: unknown): value is Pick<Holding, "priceSource" | "geography" | "ticker" | "schemeCode"> {
-  return typeof value === "object" && value !== null;
-}
-
-function parseRefreshHoldings(body: unknown): Holding[] {
-  if (typeof body !== "object" || body === null || !("holdings" in body)) {
-    return [];
-  }
-
-  const holdings = (body as { holdings?: unknown }).holdings;
-  if (!Array.isArray(holdings)) {
-    throw new Error("Expected holdings to be an array");
-  }
-
-  if (holdings.length > MAX_REFRESH_HOLDINGS) {
-    throw new Error(`Too many holdings supplied. Maximum supported is ${MAX_REFRESH_HOLDINGS}`);
-  }
-
-  return holdings.filter(isHoldingLike) as Holding[];
-}
-
-function getRefreshErrorStatus(error: unknown) {
-  if (!(error instanceof Error)) {
-    return 500;
-  }
-
-  if (
-    error instanceof SyntaxError ||
-    error.message.includes("holdings") ||
-    error.message.includes("Expected")
-  ) {
-    return 400;
-  }
-
-  return 500;
-}
-
 function normalizeIndianSymbol(holding: Holding) {
   if (!holding.ticker) return "";
   return holding.ticker.startsWith("NSE:") ? holding.ticker : `NSE:${holding.ticker}`;
@@ -90,15 +46,15 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const holdings = parseRefreshHoldings(body);
+    const holdings = (body?.holdings || []) as Holding[];
 
-    const mfSchemeCodes = limit(unique(
+    const mfSchemeCodes = unique(
       holdings
         .filter((holding) => holding.priceSource === "mfapi" && holding.schemeCode)
         .map((holding) => holding.schemeCode || "")
-    ));
+    );
 
-    const indianSymbols = limit(unique(
+    const indianSymbols = unique(
       holdings
         .filter(
           (holding) =>
@@ -107,9 +63,9 @@ export async function POST(request: Request) {
             Boolean(holding.ticker)
         )
         .map(normalizeIndianSymbol)
-    ));
+    );
 
-    const usEtfSymbols = limit(unique(
+    const usEtfSymbols = unique(
       holdings
         .filter(
           (holding) =>
@@ -118,9 +74,9 @@ export async function POST(request: Request) {
             Boolean(holding.ticker)
         )
         .map((holding) => holding.ticker)
-    ));
+    );
 
-    const uaeStockSymbols = limit(unique(
+    const uaeStockSymbols = unique(
       holdings
         .filter(
           (holding) =>
@@ -129,16 +85,16 @@ export async function POST(request: Request) {
             Boolean(holding.ticker)
         )
         .map((holding) => holding.ticker)
-    ));
+    );
 
-    const cryptoIds = limit(unique(
+    const cryptoIds = unique(
       holdings
         .filter((holding) => holding.priceSource === "coingecko" && Boolean(holding.ticker))
         .map((holding) => {
           if (holding.ticker === "BTC") return "bitcoin";
           return "";
         })
-    ));
+    );
 
     const tasks: Promise<PriceResult>[] = [
       createPriceTask("currency", () => fetchExchangeRates()),
@@ -168,7 +124,7 @@ export async function POST(request: Request) {
         success: false,
         error: error instanceof Error ? error.message : "Failed to refresh prices",
       },
-      { status: getRefreshErrorStatus(error) }
+      { status: 500 }
     );
   }
 }
