@@ -47,19 +47,6 @@ function hasDatabaseClient(client: unknown): client is Required<SupabaseLikeClie
   return typeof client === "object" && client !== null && typeof (client as SupabaseLikeClient).from === "function";
 }
 
-function parseHoldingPurchases(raw: string | null) {
-  if (!raw) {
-    return undefined;
-  }
-
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 function mapRowToHolding(row: HoldingRow): Holding {
   return {
     id: row.id,
@@ -79,7 +66,7 @@ function mapRowToHolding(row: HoldingRow): Holding {
     priceSource: row.price_source as Holding["priceSource"],
     schemeCode: row.scheme_code || undefined,
     lastPriceUpdate: row.last_price_update || undefined,
-    purchases: parseHoldingPurchases(row.purchases),
+    purchases: row.purchases ? JSON.parse(row.purchases) : undefined,
   };
 }
 

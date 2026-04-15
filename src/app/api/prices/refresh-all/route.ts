@@ -3,7 +3,7 @@ import { fetchCryptoPrices } from "@/lib/api/coingecko";
 import { fetchDfmQuotes } from "@/lib/api/dfm";
 import { fetchExchangeRates } from "@/lib/api/frankfurter";
 import { fetchMutualFundNav } from "@/lib/api/mfapi";
-import { CRYPTO_IDS, type Holding } from "@/lib/constants";
+import type { Holding } from "@/lib/constants";
 import { requireAuthenticatedRouteUser } from "@/lib/supabase/route-auth";
 
 export const dynamic = "force-dynamic";
@@ -134,7 +134,10 @@ export async function POST(request: Request) {
     const cryptoIds = limit(unique(
       holdings
         .filter((holding) => holding.priceSource === "coingecko" && Boolean(holding.ticker))
-        .map((holding) => CRYPTO_IDS[holding.ticker.trim().toUpperCase()] || "")
+        .map((holding) => {
+          if (holding.ticker === "BTC") return "bitcoin";
+          return "";
+        })
     ));
 
     const tasks: Promise<PriceResult>[] = [

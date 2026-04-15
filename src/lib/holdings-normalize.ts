@@ -1,4 +1,4 @@
-import { CRYPTO_IDS, type Holding } from "@/lib/constants";
+import type { Holding } from "@/lib/constants";
 
 const KNOWN_FUND_SCHEME_CODES: Array<{ pattern: RegExp; schemeCode: string }> = [
   { pattern: /bandhan\s+small\s+cap\s+fund/i, schemeCode: "147946" },
@@ -31,10 +31,8 @@ function getDefaultAllocationClass(holding: Holding) {
 export function normalizeHolding(holding: Holding): Holding {
   const normalized = { ...holding };
   const defaultAllocationClass = getDefaultAllocationClass(normalized);
-  const normalizedTicker = normalized.ticker.trim().toUpperCase();
 
   normalized.allocationClass = defaultAllocationClass;
-  normalized.ticker = normalizedTicker;
 
   if (normalized.assetClass === "Mutual Funds" && looksLikeEtf(normalized)) {
     normalized.assetClass = "ETFs";
@@ -65,7 +63,7 @@ export function normalizeHolding(holding: Holding): Holding {
     }
   }
 
-  if (normalized.assetClass === "Crypto" && normalizedTicker && CRYPTO_IDS[normalizedTicker]) {
+  if (normalized.assetClass === "Crypto" && normalized.ticker === "BTC") {
     normalized.priceSource = "coingecko";
   }
 

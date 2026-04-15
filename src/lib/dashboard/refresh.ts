@@ -1,5 +1,5 @@
 import { computeInrToAed, type ExchangeRates } from "@/lib/api/frankfurter";
-import { CRYPTO_IDS, type Holding } from "@/lib/constants";
+import type { Holding } from "@/lib/constants";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
 
 interface PriceResult {
@@ -91,18 +91,11 @@ function applyRefreshResults(holdings: Holding[], results: PriceResult[]) {
 
       case "crypto": {
         const prices = result.data as Record<string, { usd: number; aed: number }>;
-        for (const [ticker, coinId] of Object.entries(CRYPTO_IDS)) {
-          const quote = prices[coinId];
-          if (!quote) {
-            continue;
-          }
-
-          const index = updated.findIndex(
-            (holding) => holding.ticker.trim().toUpperCase() === ticker
-          );
+        if (prices.bitcoin) {
+          const index = updated.findIndex((holding) => holding.ticker === "BTC");
           if (index !== -1) {
-            const nextPrice = updated[index].currency === "AED" ? quote.aed : quote.usd;
-            updated[index] = { ...updated[index], currentPrice: nextPrice, lastPriceUpdate: now };
+            const btcPrice = updated[index].currency === "AED" ? prices.bitcoin.aed : prices.bitcoin.usd;
+            updated[index] = { ...updated[index], currentPrice: btcPrice, lastPriceUpdate: now };
           }
         }
         break;
