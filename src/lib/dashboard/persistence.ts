@@ -114,7 +114,6 @@ export async function syncDashboardHoldingsFromRemote(userId: string) {
   }
 
   const { normalized, changed } = normalizeHoldings(remoteHoldings);
-  persistLocalHoldings(userId, normalized);
 
   if (changed) {
     await upsertRemoteHoldings(supabase, userId, normalized);

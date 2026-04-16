@@ -20,19 +20,6 @@ const REMOTE_SYNC_INTERVAL_MS = 30 * 1000;
 const REMOTE_SYNC_COOLDOWN_MS = 2500;
 const REMOTE_WRITE_DEBOUNCE_MS = 2500;
 
-const PRICE_ONLY_FIELDS = new Set(["currentPrice", "lastPriceUpdate"]);
-
-/** Signature of fields that warrant a remote write when changed.
- *  Excludes currentPrice and lastPriceUpdate so price refreshes
- *  don't trigger unnecessary Supabase writes. */
-function getHoldingsStructureSignature(holdings: Holding[]) {
-  return JSON.stringify(
-    holdings.map((h) =>
-      Object.fromEntries(Object.entries(h).filter(([k]) => !PRICE_ONLY_FIELDS.has(k)))
-    )
-  );
-}
-
 function getHoldingsSignature(holdings: Holding[]) {
   return JSON.stringify(holdings);
 }
@@ -46,7 +33,7 @@ export function useDashboardHoldings() {
   const holdingsRef = useRef<Holding[]>([]);
   const lastLocalMutationAtRef = useRef(0);
   const remoteSyncInFlightRef = useRef(false);
-  const lastWrittenStructureRef = useRef<string>("");
+  const lastWrittenHoldingsRef = useRef<string>("");
 
   useEffect(() => {
     holdingsRef.current = holdings;
@@ -95,6 +82,7 @@ export function useDashboardHoldings() {
         }
 
         holdingsRef.current = state.holdings;
+        lastWrittenHoldingsRef.current = getHoldingsSignature(state.holdings);
         setUserId(state.userId);
         setHoldings(state.holdings);
         setInrToAedRate(state.inrToAedRate);
@@ -120,11 +108,8 @@ export function useDashboardHoldings() {
 
     persistLocalHoldings(userId, holdings);
 
-    // Skip remote write if only prices changed — price refreshes update
-    // currentPrice/lastPriceUpdate frequently and don't need to be persisted
-    // on every tick. Structure changes (adds, deletes, edits) always write.
-    const structureSignature = getHoldingsStructureSignature(holdings);
-    if (structureSignature === lastWrittenStructureRef.current) {
+    const holdingsSignature = getHoldingsSignature(holdings);
+    if (holdingsSignature === lastWrittenHoldingsRef.current) {
       return;
     }
 
@@ -133,7 +118,7 @@ export function useDashboardHoldings() {
     const timeoutId = window.setTimeout(async () => {
       try {
         await upsertRemoteHoldingsState(userId, holdings);
-        lastWrittenStructureRef.current = structureSignature;
+        lastWrittenHoldingsRef.current = holdingsSignature;
       } catch (error) {
         console.error("Failed to sync holdings to Supabase:", error);
       }
@@ -209,8 +194,9 @@ export function useDashboardHoldings() {
   }, [userId]);
 
   const updatePrice = useCallback((id: string, price: number) => {
+    const lastPriceUpdate = new Date().toISOString();
     setHoldings((current) =>
-      current.map((holding) => (holding.id === id ? { ...holding, currentPrice: price } : holding))
+      current.map((holding) => (holding.id === id ? { ...holding, currentPrice: price, lastPriceUpdate } : holding))
     );
   }, []);
 
