@@ -20,6 +20,15 @@ interface RefreshResponse {
   error?: string;
 }
 
+function parseOptionalPercent(value: number | string | undefined) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const parsed = typeof value === "number" ? value : Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 function applyRefreshResults(holdings: Holding[], results: PriceResult[]) {
   const now = new Date().toISOString();
   const updated = [...holdings];
@@ -44,44 +53,64 @@ function applyRefreshResults(holdings: Holding[], results: PriceResult[]) {
         for (const nav of navData) {
           const index = updated.findIndex((holding) => holding.schemeCode === nav.schemeCode);
           if (index !== -1) {
-            updated[index] = { ...updated[index], currentPrice: nav.nav, lastPriceUpdate: now };
+            updated[index] = {
+              ...updated[index],
+              currentPrice: nav.nav,
+              previousClose: undefined,
+              dayChangePercent: undefined,
+              lastPriceUpdate: now,
+            };
           }
         }
         break;
       }
 
       case "indian-stocks": {
-        const quotes = result.data as Record<string, { price: number }>;
+        const quotes = result.data as Record<string, { price: number; previousClose?: number; changePercent?: string }>;
         for (const [ticker, quote] of Object.entries(quotes)) {
           const index = updated.findIndex(
             (holding) => holding.ticker === ticker || holding.ticker === `NSE:${ticker}`
           );
           if (index !== -1) {
-            updated[index] = { ...updated[index], currentPrice: quote.price, lastPriceUpdate: now };
+            updated[index] = {
+              ...updated[index],
+              currentPrice: quote.price,
+              previousClose: quote.previousClose,
+              dayChangePercent: parseOptionalPercent(quote.changePercent),
+              lastPriceUpdate: now,
+            };
           }
         }
         break;
       }
 
       case "us-etfs": {
-        const quotes = result.data as Record<string, { price: number }>;
+        const quotes = result.data as Record<string, { price: number; previousClose?: number; changePercent?: string }>;
         for (const [symbol, quote] of Object.entries(quotes)) {
           const index = updated.findIndex((holding) => holding.ticker === symbol);
           if (index !== -1 && quote.price !== undefined) {
-            updated[index] = { ...updated[index], currentPrice: quote.price, lastPriceUpdate: now };
+            updated[index] = {
+              ...updated[index],
+              currentPrice: quote.price,
+              previousClose: quote.previousClose,
+              dayChangePercent: parseOptionalPercent(quote.changePercent),
+              lastPriceUpdate: now,
+            };
           }
         }
         break;
       }
 
       case "uae-stocks": {
-        const quotes = result.data as Record<string, { lastradeprice: number }>;
+        const quotes = result.data as Record<string, { lastradeprice: number; previousclosingprice?: number; changepercentage?: number }>;
         for (const [symbol, quote] of Object.entries(quotes)) {
           const index = updated.findIndex((holding) => holding.ticker === symbol);
           if (index !== -1 && quote.lastradeprice > 0) {
             updated[index] = {
               ...updated[index],
               currentPrice: quote.lastradeprice,
+              previousClose: quote.previousclosingprice,
+              dayChangePercent: parseOptionalPercent(quote.changepercentage),
               lastPriceUpdate: now,
             };
           }
@@ -90,12 +119,18 @@ function applyRefreshResults(holdings: Holding[], results: PriceResult[]) {
       }
 
       case "crypto": {
-        const prices = result.data as Record<string, { usd: number; aed: number }>;
+        const prices = result.data as Record<string, { usd: number; aed: number; usd_24h_change?: number }>;
         if (prices.bitcoin) {
           const index = updated.findIndex((holding) => holding.ticker === "BTC");
           if (index !== -1) {
             const btcPrice = updated[index].currency === "AED" ? prices.bitcoin.aed : prices.bitcoin.usd;
-            updated[index] = { ...updated[index], currentPrice: btcPrice, lastPriceUpdate: now };
+            updated[index] = {
+              ...updated[index],
+              currentPrice: btcPrice,
+              previousClose: undefined,
+              dayChangePercent: parseOptionalPercent(prices.bitcoin.usd_24h_change),
+              lastPriceUpdate: now,
+            };
           }
         }
         break;
