@@ -3,7 +3,7 @@ import { fetchCryptoPrices } from "@/lib/api/coingecko";
 import { fetchDfmQuotes } from "@/lib/api/dfm";
 import { fetchExchangeRates } from "@/lib/api/frankfurter";
 import { fetchMutualFundNav } from "@/lib/api/mfapi";
-import type { Holding } from "@/lib/constants";
+import { CRYPTO_IDS, type Holding } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -27,13 +27,25 @@ function createPriceTask(source: string, loader: () => Promise<unknown>): Promis
       return {
         source,
         success: false,
-        error: `Failed to fetch ${source}`,
+        error: error instanceof Error ? error.message : `Failed to fetch ${source}`,
       };
     });
 }
 
 function unique(values: string[]) {
   return [...new Set(values.filter(Boolean))];
+}
+
+function requireQuoteResults<T>(
+  source: string,
+  requestedSymbols: string[],
+  data: Record<string, T>
+) {
+  if (requestedSymbols.length > 0 && Object.keys(data).length === 0) {
+    throw new Error(`No ${source} quotes returned for ${requestedSymbols.join(", ")}`);
+  }
+
+  return data;
 }
 
 function normalizeIndianSymbol(holding: Holding) {
@@ -95,8 +107,7 @@ export async function POST(request: Request) {
       holdings
         .filter((holding) => holding.priceSource === "coingecko" && Boolean(holding.ticker))
         .map((holding) => {
-          if (holding.ticker === "BTC") return "bitcoin";
-          return "";
+          return CRYPTO_IDS[holding.ticker.trim().toUpperCase()] || "";
         })
     );
 
@@ -104,13 +115,25 @@ export async function POST(request: Request) {
       createPriceTask("currency", () => fetchExchangeRates()),
       createPriceTask("indian-mf", () => (mfSchemeCodes.length ? fetchMutualFundNav(mfSchemeCodes) : Promise.resolve([]))),
       createPriceTask("indian-stocks", () =>
-        indianSymbols.length ? fetchAlphaVantageMultiple(indianSymbols) : Promise.resolve({})
+        indianSymbols.length
+          ? fetchAlphaVantageMultiple(indianSymbols).then((data) =>
+              requireQuoteResults("Indian stock", indianSymbols, data)
+            )
+          : Promise.resolve({})
       ),
       createPriceTask("us-etfs", () =>
-        usEtfSymbols.length ? fetchAlphaVantageMultiple(usEtfSymbols) : Promise.resolve({})
+        usEtfSymbols.length
+          ? fetchAlphaVantageMultiple(usEtfSymbols).then((data) =>
+              requireQuoteResults("US ETF", usEtfSymbols, data)
+            )
+          : Promise.resolve({})
       ),
       createPriceTask("uae-stocks", () =>
-        uaeStockSymbols.length ? fetchDfmQuotes(uaeStockSymbols) : Promise.resolve({})
+        uaeStockSymbols.length
+          ? fetchDfmQuotes(uaeStockSymbols).then((data) =>
+              requireQuoteResults("UAE stock", uaeStockSymbols, data)
+            )
+          : Promise.resolve({})
       ),
       createPriceTask("crypto", () => (cryptoIds.length ? fetchCryptoPrices(cryptoIds) : Promise.resolve({}))),
     ];

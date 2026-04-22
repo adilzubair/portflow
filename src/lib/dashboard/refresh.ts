@@ -145,6 +145,7 @@ export async function refreshDashboardPrices(holdings: Holding[]) {
   const { normalized: normalizedHoldings } = normalizeHoldings(holdings);
   const response = await fetch("/api/prices/refresh-all", {
     method: "POST",
+    credentials: "same-origin",
     headers: {
       "Content-Type": "application/json",
     },
