@@ -184,6 +184,19 @@ export function useDashboardHoldings() {
     });
   }, []);
 
+  const saveHoldings = useCallback((incomingHoldings: Holding[]) => {
+    if (!incomingHoldings.length) {
+      return;
+    }
+
+    const normalizedIncomingHoldings = normalizeHoldings(incomingHoldings).normalized.map((holding) => ({
+      ...holding,
+      id: holding.id || generateId(),
+    }));
+
+    setHoldings((current) => [...normalizedIncomingHoldings, ...current]);
+  }, []);
+
   const deleteHolding = useCallback((id: string) => {
     setHoldings((current) => current.filter((holding) => holding.id !== id));
     
@@ -211,6 +224,7 @@ export function useDashboardHoldings() {
     fxUpdatedAt,
     setFxUpdatedAt,
     saveHolding,
+    saveHoldings,
     deleteHolding,
     updatePrice,
   };

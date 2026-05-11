@@ -13,9 +13,19 @@ interface Props {
   onDelete: (id: string) => void;
   onPriceUpdate: (id: string, price: number) => void;
   onAddHolding: () => void;
+  onImportHoldings: () => void;
 }
 
-export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEdit, onDelete, onPriceUpdate, onAddHolding }: Props) {
+export default function HoldingsTable({
+  holdings,
+  isAmountsVisible,
+  onView,
+  onEdit,
+  onDelete,
+  onPriceUpdate,
+  onAddHolding,
+  onImportHoldings,
+}: Props) {
   const [filters, setFilters] = useState({
     platform: "All",
     assetClass: "All",
@@ -211,6 +221,16 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
               {filteredHoldings.length} of {holdings.length}
             </div>
             <button
+              type="button"
+              onClick={() => {
+                tap();
+                onImportHoldings();
+              }}
+              className="hidden rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 sm:inline-flex"
+            >
+              Import
+            </button>
+            <button
               onClick={() => { tap(); onAddHolding(); }}
               className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-accent-violet text-bg-primary shadow-sm transition hover:brightness-105"
               aria-label="Add holding"
@@ -254,6 +274,17 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
               </button>
             ) : null}
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              tap();
+              onImportHoldings();
+            }}
+            className="inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            Import screenshots
+          </button>
 
           {activeFilterChips.length ? (
             <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">

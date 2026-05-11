@@ -14,6 +14,7 @@ It is built with Next.js and Supabase and supports authenticated users, live mar
 - Auth with Supabase
 - Holdings stored per user in Supabase, with local fallback for demo mode
 - Import/export holdings as JSON
+- Screenshot-based holdings onboarding with AI-assisted extraction and verification
 - Price refresh across:
   - Yahoo Finance for Indian stocks and ETFs
   - Twelve Data for US ETFs and UAE stocks
@@ -70,9 +71,12 @@ Optional/market-data specific:
 ```bash
 TWELVE_DATA_API_KEY=...
 ALPHA_VANTAGE_API_KEY=...
+OPENROUTER_API_KEY=...
+OPENROUTER_MODEL=openrouter/free
 ```
 
 Note: the app now uses Yahoo Finance for Indian equity pricing, so `ALPHA_VANTAGE_API_KEY` is no longer required for the current dashboard flow.
+For screenshot-based portfolio onboarding, `OPENROUTER_API_KEY` is required. The default `OPENROUTER_MODEL=openrouter/free` keeps inference free and routes to compatible image-plus-structured-output models. If you want a more predictable pinned free OCR-style model, use `nvidia/nemotron-nano-12b-v2-vl:free`.
 
 ## Local Development
 
@@ -111,6 +115,7 @@ This creates:
 - Dashboard edits sync back to Supabase automatically
 - `Import holdings` replaces the current user’s holdings in Supabase and updates local cache
 - `Reset` clears both Supabase and local cache
+- `Import from screenshots` drafts holdings through OpenRouter and requires user verification before saving
 
 ## PWA
 

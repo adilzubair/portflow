@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import AllocationCharts from "@/components/AllocationCharts";
 import HoldingDetailsModal from "@/components/HoldingDetailsModal";
+import HoldingsImportModal from "@/components/HoldingsImportModal";
 import HoldingModal from "@/components/HoldingModal";
 import HoldingsTable from "@/components/HoldingsTable";
+import PortfolioOnboarding from "@/components/PortfolioOnboarding";
 import PortfolioSummaryStrip from "@/components/PortfolioSummaryStrip";
 import PortfolioTrendChart from "@/components/PortfolioTrendChart";
 import { useDashboardState } from "@/hooks/useDashboardState";
@@ -36,6 +38,7 @@ function summarizeRefreshFailures(sources: string[]) {
 
 export default function DashboardPage() {
   const [modalOpen, setModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [editingHolding, setEditingHolding] = useState<Holding | null>(null);
   const [viewingHolding, setViewingHolding] = useState<Holding | null>(null);
   const {
@@ -52,6 +55,7 @@ export default function DashboardPage() {
     summary,
     snapshots,
     saveHolding,
+    saveHoldings,
     deleteHolding,
     updatePrice,
   } = useDashboardState();
@@ -73,6 +77,11 @@ export default function DashboardPage() {
 
   const handlePriceUpdate = (id: string, price: number) => {
     updatePrice(id, price);
+  };
+
+  const handleImportedHoldings = (holdings: Holding[]) => {
+    saveHoldings(holdings);
+    setImportModalOpen(false);
   };
 
   const trendChartData = useMemo(
@@ -187,6 +196,16 @@ export default function DashboardPage() {
           }))}
       />
 
+      {computedHoldings.length === 0 ? (
+        <PortfolioOnboarding
+          onImportHoldings={() => setImportModalOpen(true)}
+          onAddManually={() => {
+            setEditingHolding(null);
+            setModalOpen(true);
+          }}
+        />
+      ) : null}
+
       {refreshError ? (
         <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           Refresh failed. Existing prices are still shown. {refreshError}
@@ -217,6 +236,7 @@ export default function DashboardPage() {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onPriceUpdate={handlePriceUpdate}
+        onImportHoldings={() => setImportModalOpen(true)}
         onAddHolding={() => {
           setEditingHolding(null);
           setModalOpen(true);
@@ -234,6 +254,13 @@ export default function DashboardPage() {
           }}
         />
       )}
+
+      {importModalOpen ? (
+        <HoldingsImportModal
+          onImport={handleImportedHoldings}
+          onClose={() => setImportModalOpen(false)}
+        />
+      ) : null}
 
       {viewingHolding && (
         <HoldingDetailsModal
