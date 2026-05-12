@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Area,
   CartesianGrid,
@@ -11,6 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import MeasuredChart from "@/components/MeasuredChart";
+import { subtle } from "@/lib/haptics";
 import { compactNumber, formatMoney, formatOrMask } from "@/lib/utils";
 
 interface ChartPoint {
@@ -137,6 +138,22 @@ function CustomTooltip({
 
 export default function PortfolioTrendChart({ chartData, isAmountsVisible }: Props) {
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const lastScrubIndexRef = useRef<number | null>(null);
+
+  // Fire a subtle haptic each time the touch/cursor crosses to a different day
+  // on the chart. This is what makes the chart feel like a scrubber on mobile.
+  const handleScrubMove = (state: { activeTooltipIndex?: number | string | null }) => {
+    const raw = state?.activeTooltipIndex;
+    const index = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : NaN;
+    if (!Number.isFinite(index)) return;
+    if (index === lastScrubIndexRef.current) return;
+    lastScrubIndexRef.current = index;
+    subtle();
+  };
+
+  const handleScrubLeave = () => {
+    lastScrubIndexRef.current = null;
+  };
 
   useEffect(() => {
     const root = document.documentElement;
@@ -210,6 +227,10 @@ export default function PortfolioTrendChart({ chartData, isAmountsVisible }: Pro
               data={formattedChartData}
               accessibilityLayer={false}
                 margin={{ top: 10, right: 6, left: 0, bottom: 0 }}
+              onMouseMove={handleScrubMove}
+              onMouseLeave={handleScrubLeave}
+              onTouchMove={handleScrubMove}
+              onTouchEnd={handleScrubLeave}
             >
               <defs>
                 <linearGradient id="portfolio-value-fill" x1="0" y1="0" x2="0" y2="1">
