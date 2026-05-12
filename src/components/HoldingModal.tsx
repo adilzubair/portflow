@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ALLOCATION_CLASS_OPTIONS, ASSET_CLASS_OPTIONS, CURRENCY_OPTIONS, GEOGRAPHY_OPTIONS, PLATFORM_OPTIONS, RISK_OPTIONS, type Currency, type Holding } from "@/lib/constants";
-import { tap, success as hapticSuccess } from "@/lib/haptics";
+import { medium, tap, success as hapticSuccess } from "@/lib/haptics";
 import { computeHolding, formatMoney, toNumber } from "@/lib/utils";
 
 interface Props {
@@ -153,7 +153,7 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
               {!showAllocationGroup ? (
                 <button
                   type="button"
-                  onClick={() => setShowAllocationGroup(true)}
+                  onClick={() => { tap(); setShowAllocationGroup(true); }}
                   className="mt-1 text-sm font-medium text-slate-600 underline-offset-2 transition hover:text-slate-900 hover:underline"
                 >
                   Customize allocation group
@@ -189,6 +189,7 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
               <button
                 type="button"
                 onClick={() => {
+                  tap();
                   updatePurchases([...(form.purchases || []), {
                     quantity: 0,
                     price: 0,
@@ -213,7 +214,7 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
                   <div key={index} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                     <button
                       type="button"
-                      onClick={() => setExpandedPurchaseIndex((current) => (current === index ? null : index))}
+                      onClick={() => { tap(); setExpandedPurchaseIndex((current) => (current === index ? null : index)); }}
                       className="flex w-full items-center justify-between gap-3 text-left"
                       aria-expanded={expandedPurchaseIndex === index}
                     >
@@ -245,6 +246,7 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
                           <button
                             type="button"
                             onClick={() => {
+                              medium();
                               const newPurchases = [...(form.purchases || [])];
                               newPurchases.splice(index, 1);
                               updatePurchases(newPurchases);
@@ -422,6 +424,7 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
                         <button
                           type="button"
                           onClick={() => {
+                            medium();
                             const newPurchases = [...(form.purchases || [])];
                             newPurchases.splice(index, 1);
                             updatePurchases(newPurchases);

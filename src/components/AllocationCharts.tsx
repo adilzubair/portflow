@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PieChart, Pie, Cell, Tooltip } from "recharts";
 import { type ComputedHolding, DARK_PIE_COLORS, LIGHT_ASSET_CLASS_COLORS, LIGHT_GEOGRAPHY_COLORS, LIGHT_PLATFORM_COLORS } from "@/lib/constants";
-import { tap } from "@/lib/haptics";
+import { subtle, tap } from "@/lib/haptics";
 import MeasuredChart from "@/components/MeasuredChart";
 import { formatMoney, getAllocation } from "@/lib/utils";
 
@@ -19,6 +19,8 @@ export default function AllocationCharts({ holdings, totalValue, totalInvested }
   const [categoryMetric, setCategoryMetric] = useState<"current" | "invested">("current");
   const mobileTrackRef = useRef<HTMLDivElement | null>(null);
   const mobileCardRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const programmaticChartChangeRef = useRef(false);
+  const mobileChartIndexInitializedRef = useRef(false);
   const byPlatform = getAllocation(holdings, "platform", totalValue);
   const byAssetClass = getAllocation(holdings, "allocationClass", totalValue);
   const byAssetClassInvested = getAllocation(holdings, "allocationClass", totalInvested, "investedAmountAed");
@@ -96,6 +98,9 @@ export default function AllocationCharts({ holdings, totalValue, totalInvested }
 
   function scrollToMobileChart(index: number) {
     const nextIndex = (index + chartCards.length) % chartCards.length;
+    // Arrow buttons already fire tap() themselves — flag so the
+    // mobileChartIndex effect skips its haptic for this change.
+    programmaticChartChangeRef.current = true;
     const nextCard = mobileCardRefs.current[nextIndex];
 
     if (!nextCard) {
@@ -110,6 +115,18 @@ export default function AllocationCharts({ holdings, totalValue, totalInvested }
     });
     setMobileChartIndex(nextIndex);
   }
+
+  useEffect(() => {
+    if (!mobileChartIndexInitializedRef.current) {
+      mobileChartIndexInitializedRef.current = true;
+      return;
+    }
+    if (programmaticChartChangeRef.current) {
+      programmaticChartChangeRef.current = false;
+      return;
+    }
+    subtle();
+  }, [mobileChartIndex]);
 
   useEffect(() => {
     const track = mobileTrackRef.current;
