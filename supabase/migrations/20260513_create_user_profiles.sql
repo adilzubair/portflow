@@ -5,6 +5,10 @@ create table if not exists public.user_profiles (
   created_at timestamptz not null default timezone('utc', now())
 );
 
+-- Add email column if the table was created before this column existed
+alter table public.user_profiles
+  add column if not exists email text;
+
 alter table public.user_profiles enable row level security;
 
 -- Users can read their own approval status (used by middleware)
