@@ -33,7 +33,7 @@ const IMPORT_FIELDS: { field: string; type: string; hint: string }[] = [
   { field: "geography", type: "enum", hint: "India · US · UAE · Global · Others" },
   { field: "currency", type: "enum", hint: "AED · USD · INR" },
   { field: "quantity", type: "number", hint: "Units held" },
-  { field: "avgBuyPrice", type: "number", hint: "Average purchase price in the holding&apos;s currency" },
+  { field: "avgBuyPrice", type: "number", hint: "Average purchase price in the holding's currency" },
   { field: "currentPrice", type: "number", hint: "Latest price — refreshed automatically after import" },
   { field: "priceSource", type: "enum", hint: "mfapi · coingecko · twelvedata · alphavantage · frankfurter · dfm · manual" },
 ];
