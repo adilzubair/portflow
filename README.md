@@ -16,11 +16,11 @@ It is built with Next.js and Supabase and supports authenticated users, live mar
 - Import/export holdings as JSON
 - Screenshot-based holdings onboarding with AI-assisted extraction and verification
 - Price refresh across:
-  - Yahoo Finance for Indian stocks and ETFs
-  - Twelve Data for US ETFs and UAE stocks
+  - Yahoo Finance for Indian stocks/ETFs and US stocks/ETFs
+  - Twelve Data for UAE stocks (DFM)
   - CoinGecko for crypto
   - Frankfurter for FX
-  - MFAPI for Indian mutual funds
+  - MFAPI for Indian mutual funds (full ~9000-scheme fuzzy match)
 - Mobile-friendly holdings view
 - Installable PWA with manifest, icons, and a lightweight service worker
 
@@ -69,8 +69,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 Optional/market-data specific:
 
 ```bash
-TWELVE_DATA_API_KEY=...
-ALPHA_VANTAGE_API_KEY=...
+TWELVE_DATA_API_KEY=...  # only used for UAE/DFM stock quotes
 OPENROUTER_API_KEY=...
 OPENROUTER_MODEL=openrouter/free
 PORTFOLIO_IMPORT_PROVIDER=auto
@@ -79,7 +78,7 @@ OPENAI_MODEL=gpt-4o-mini
 RATE_LIMIT_IP_SALT=...
 ```
 
-Note: the app now uses Yahoo Finance for Indian equity pricing, so `ALPHA_VANTAGE_API_KEY` is no longer required for the current dashboard flow.
+Note: Indian and US equity pricing uses Yahoo Finance (no key required).
 For screenshot-based portfolio onboarding, configure either `OPENAI_API_KEY` or `OPENROUTER_API_KEY`. The default OpenRouter setup uses `OPENROUTER_MODEL=openrouter/free` to keep inference free and route to compatible image-plus-structured-output models. If you want a more predictable pinned free OCR-style model, use `nvidia/nemotron-nano-12b-v2-vl:free`.
 If `OPENAI_API_KEY` is present, screenshot import now defaults to OpenAI automatically unless you explicitly set `PORTFOLIO_IMPORT_PROVIDER=openrouter`. The recommended starting model is `gpt-4o-mini` for a better speed/cost balance, and you can switch to `gpt-4.1-mini` if you want a stronger extraction model.
 
