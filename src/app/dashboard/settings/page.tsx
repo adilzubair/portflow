@@ -60,6 +60,8 @@ export default function SettingsPage() {
   const [resetting, setResetting] = useState(false);
   const [resetConfirming, setResetConfirming] = useState(false);
   const [dataError, setDataError] = useState<string | null>(null);
+  const [resolving, setResolving] = useState(false);
+  const [resolveResult, setResolveResult] = useState<{ updated: number; total: number } | null>(null);
 
   useEffect(() => {
     async function getUser() {
@@ -72,6 +74,26 @@ export default function SettingsPage() {
 
   const storageKey = `portflow-holdings-${userId}`;
   const rateStorageKey = getRateStorageKey(userId);
+
+  const resolveMissingDetails = async () => {
+    setResolving(true);
+    setDataError(null);
+    setResolveResult(null);
+    try {
+      const res = await fetch("/api/holdings/resolve", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok || data?.error) {
+        throw new Error(data?.error || "Failed to resolve holdings");
+      }
+      setResolveResult({ updated: data.updatedCount ?? 0, total: data.total ?? 0 });
+      hapticSuccess();
+      router.refresh();
+    } catch (error) {
+      setDataError(error instanceof Error ? error.message : "Failed to resolve holdings");
+    } finally {
+      setResolving(false);
+    }
+  };
 
   const rebuildHistory = async () => {
     setRebuildingHistory(true);
@@ -189,6 +211,30 @@ export default function SettingsPage() {
                 {dataError}
               </p>
             )}
+
+            {/* Auto-resolve missing details */}
+            <div className="rounded-xl border border-border-default bg-bg-elevated p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-text-primary">Fix missing tickers & scheme codes</p>
+                  <p className="mt-1 text-xs leading-5 text-text-secondary">
+                    Re-scan your holdings and auto-resolve missing Indian MF scheme codes, stock tickers (India/US), and UAE symbols. Run this if a holding&apos;s price is not refreshing.
+                  </p>
+                  {resolveResult && (
+                    <p className="mt-2 text-xs font-medium text-accent-gain">
+                      Updated {resolveResult.updated} of {resolveResult.total} holdings.
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => { tap(); resolveMissingDetails(); }}
+                  disabled={resolving}
+                  className="shrink-0 self-start rounded-full border border-border-default bg-bg-card px-4 py-2 text-xs font-semibold text-text-primary transition hover:bg-bg-card-hover disabled:cursor-not-allowed disabled:opacity-55"
+                >
+                  {resolving ? "Resolving…" : "Auto-resolve"}
+                </button>
+              </div>
+            </div>
 
             {/* Historical snapshots */}
             <div className="rounded-xl border border-border-default bg-bg-elevated p-4">
