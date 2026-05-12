@@ -1,7 +1,7 @@
 import { fetchTwelveDataQuotes } from '@/lib/api/twelvedata';
 import { UAE_STOCK_TICKERS } from '@/lib/constants';
 import { RATE_LIMIT_POLICIES, enforceRateLimits } from '@/lib/rate-limit';
-import { createClient } from '@/lib/supabase/server';
+import { checkApproval, createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +11,9 @@ export async function GET(request: Request) {
   if (!user) {
     return Response.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
+
+  const deniedResponse = await checkApproval(supabase, user.id);
+  if (deniedResponse) return deniedResponse;
   const rateLimitResponse = await enforceRateLimits({
     request,
     client: supabase,

@@ -5,7 +5,7 @@ import { fetchExchangeRates } from "@/lib/api/frankfurter";
 import { fetchMutualFundNav } from "@/lib/api/mfapi";
 import { CRYPTO_IDS, type Holding } from "@/lib/constants";
 import { RATE_LIMIT_POLICIES, enforceRateLimits } from "@/lib/rate-limit";
-import { createClient } from "@/lib/supabase/server";
+import { checkApproval, createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +68,9 @@ export async function POST(request: Request) {
   if (!user) {
     return Response.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
+
+  const deniedResponse = await checkApproval(supabase, user.id);
+  if (deniedResponse) return deniedResponse;
 
   const rateLimitResponse = await enforceRateLimits({
     request,

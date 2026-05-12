@@ -1,6 +1,26 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
+export async function checkApproval(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string
+): Promise<Response | null> {
+  if (userId === 'demo-user') return null;
+  try {
+    const { data } = await (supabase as ReturnType<typeof createServerClient>)
+      .from('user_profiles')
+      .select('approved')
+      .eq('user_id', userId)
+      .single();
+    if (!data?.approved) {
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
+  } catch {
+    return Response.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  return null;
+}
+
 export async function createClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
