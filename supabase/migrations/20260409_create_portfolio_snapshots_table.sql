@@ -29,22 +29,26 @@ execute function public.set_portfolio_snapshots_updated_at();
 
 alter table public.portfolio_snapshots enable row level security;
 
+drop policy if exists "portfolio_snapshots_select_own" on public.portfolio_snapshots;
 create policy "portfolio_snapshots_select_own"
 on public.portfolio_snapshots
 for select
 using (auth.uid() = user_id);
 
+drop policy if exists "portfolio_snapshots_insert_own" on public.portfolio_snapshots;
 create policy "portfolio_snapshots_insert_own"
 on public.portfolio_snapshots
 for insert
 with check (auth.uid() = user_id);
 
+drop policy if exists "portfolio_snapshots_update_own" on public.portfolio_snapshots;
 create policy "portfolio_snapshots_update_own"
 on public.portfolio_snapshots
 for update
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
 
+drop policy if exists "portfolio_snapshots_delete_own" on public.portfolio_snapshots;
 create policy "portfolio_snapshots_delete_own"
 on public.portfolio_snapshots
 for delete

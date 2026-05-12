@@ -22,6 +22,7 @@ export default function MeasuredChart({
     if (!element) {
       return;
     }
+    let frameId = 0;
 
     const updateSize = () => {
       const nextWidth = Math.floor(element.clientWidth);
@@ -42,13 +43,19 @@ export default function MeasuredChart({
     updateSize();
 
     const observer = new ResizeObserver(() => {
-      updateSize();
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+      }
+      frameId = requestAnimationFrame(updateSize);
     });
 
     observer.observe(element);
 
     return () => {
       observer.disconnect();
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+      }
     };
   }, []);
 

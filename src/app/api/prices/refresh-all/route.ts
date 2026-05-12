@@ -4,7 +4,8 @@ import { fetchDfmQuotes } from "@/lib/api/dfm";
 import { fetchExchangeRates } from "@/lib/api/frankfurter";
 import { fetchMutualFundNav } from "@/lib/api/mfapi";
 import { CRYPTO_IDS, type Holding } from "@/lib/constants";
-import { createClient } from "@/lib/supabase/server";
+import { RATE_LIMIT_POLICIES, enforceRateLimits } from "@/lib/rate-limit";
+import { checkApproval, createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,14 @@ function unique(values: string[]) {
   return [...new Set(values.filter(Boolean))];
 }
 
+function isRefreshableTicker(value: string) {
+  const ticker = value.trim().toUpperCase();
+  if (!ticker) return false;
+  if (ticker.length > 15) return false;
+  if (ticker.includes(" ")) return false;
+  return /^[A-Z0-9._:-]+$/.test(ticker);
+}
+
 function requireQuoteResults<T>(
   source: string,
   requestedSymbols: string[],
@@ -60,6 +69,21 @@ export async function POST(request: Request) {
     return Response.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
+  const deniedResponse = await checkApproval(supabase, user.id);
+  if (deniedResponse) return deniedResponse;
+
+  const rateLimitResponse = await enforceRateLimits({
+    request,
+    client: supabase,
+    userId: user.id,
+    accountPolicy: RATE_LIMIT_POLICIES.priceRefreshAccount,
+    ipPolicy: RATE_LIMIT_POLICIES.priceRefreshIp,
+  });
+
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   try {
     const body = await request.json();
     const holdings = (body?.holdings || []) as Holding[];
@@ -76,7 +100,8 @@ export async function POST(request: Request) {
           (holding) =>
             holding.priceSource === "alphavantage" &&
             holding.geography === "India" &&
-            Boolean(holding.ticker)
+            Boolean(holding.ticker) &&
+            isRefreshableTicker(holding.ticker)
         )
         .map(normalizeIndianSymbol)
     );
@@ -87,7 +112,8 @@ export async function POST(request: Request) {
           (holding) =>
             holding.priceSource === "alphavantage" &&
             holding.geography === "US" &&
-            Boolean(holding.ticker)
+            Boolean(holding.ticker) &&
+            isRefreshableTicker(holding.ticker)
         )
         .map((holding) => holding.ticker)
     );
@@ -98,7 +124,8 @@ export async function POST(request: Request) {
           (holding) =>
             holding.priceSource === "dfm" &&
             holding.geography === "UAE" &&
-            Boolean(holding.ticker)
+            Boolean(holding.ticker) &&
+            isRefreshableTicker(holding.ticker)
         )
         .map((holding) => holding.ticker)
     );

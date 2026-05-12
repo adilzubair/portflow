@@ -34,23 +34,43 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Redirect unauthenticated users to login (except for /login, /auth, and /api paths)
-  if (
-    !user &&
-    !request.nextUrl.pathname.startsWith('/login') &&
-    !request.nextUrl.pathname.startsWith('/auth') &&
-    !request.nextUrl.pathname.startsWith('/api')
-  ) {
+  const pathname = request.nextUrl.pathname;
+  const isPublicPath =
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/auth') ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/pending-approval');
+
+  // Redirect unauthenticated users to login
+  if (!user && !isPublicPath) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
 
-  // Redirect authenticated users away from /login
-  if (user && request.nextUrl.pathname.startsWith('/login')) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
-    return NextResponse.redirect(url);
+  if (user) {
+    // Check approval status
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('approved')
+      .eq('user_id', user.id)
+      .single();
+
+    const isApproved = profile?.approved === true;
+
+    // Unapproved users can only access /pending-approval
+    if (!isApproved && !pathname.startsWith('/pending-approval') && !pathname.startsWith('/api')) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/pending-approval';
+      return NextResponse.redirect(url);
+    }
+
+    // Approved users get redirected away from /login and /pending-approval
+    if (isApproved && (pathname.startsWith('/login') || pathname.startsWith('/pending-approval'))) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/dashboard';
+      return NextResponse.redirect(url);
+    }
   }
 
   return supabaseResponse;

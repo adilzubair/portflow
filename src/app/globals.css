@@ -1,27 +1,27 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg-primary: #f8fafc;
+  --color-bg-primary: #f5f7fb;
   --color-bg-secondary: #ffffff;
   --color-bg-card: #ffffff;
-  --color-bg-card-hover: #f8fafc;
+  --color-bg-card-hover: #f6f8fb;
   --color-bg-input: #ffffff;
-  --color-bg-elevated: #f8fafc;
-  --color-border-default: #e2e8f0;
-  --color-border-subtle: #e2e8f0;
+  --color-bg-elevated: #f1f5f9;
+  --color-border-default: #dbe3ef;
+  --color-border-subtle: #e7edf5;
 
   --color-text-primary: #0f172a;
   --color-text-secondary: #475569;
   --color-text-muted: #64748b;
 
-  --color-accent-gain: #16a34a;
-  --color-accent-gain-bg: rgba(22, 163, 74, 0.1);
-  --color-accent-loss: #dc2626;
-  --color-accent-loss-bg: rgba(220, 38, 38, 0.1);
-  --color-accent-violet: #0f172a;
-  --color-accent-violet-bg: rgba(15, 23, 42, 0.08);
+  --color-accent-gain: #079669;
+  --color-accent-gain-bg: rgba(7, 150, 105, 0.1);
+  --color-accent-loss: #d63649;
+  --color-accent-loss-bg: rgba(214, 54, 73, 0.1);
+  --color-accent-violet: #243b6b;
+  --color-accent-violet-bg: rgba(36, 59, 107, 0.08);
   --color-accent-blue: #2563eb;
-  --color-accent-amber: #d97706;
+  --color-accent-amber: #c27a13;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
@@ -35,27 +35,27 @@ html {
 
 html.dark {
   color-scheme: dark;
-  --color-bg-primary: #0A0B0F;
-  --color-bg-secondary: #0D1016;
-  --color-bg-card: #12141B;
-  --color-bg-card-hover: #151515;
-  --color-bg-input: #0F1117;
-  --color-bg-elevated: #0F1117;
-  --color-border-default: #1B1F2A;
-  --color-border-subtle: #1B1F2A;
+  --color-bg-primary: #080a0f;
+  --color-bg-secondary: #0d1119;
+  --color-bg-card: #111722;
+  --color-bg-card-hover: #151d2a;
+  --color-bg-input: #0d131d;
+  --color-bg-elevated: #0d131d;
+  --color-border-default: #202a3a;
+  --color-border-subtle: #1a2330;
 
-  --color-text-primary: #F3F4F6;
-  --color-text-secondary: #A1A1AA;
-  --color-text-muted: #71717A;
+  --color-text-primary: #f4f7fb;
+  --color-text-secondary: #b4becc;
+  --color-text-muted: #818da0;
 
-  --color-accent-gain: #22C55E;
+  --color-accent-gain: #34d399;
   --color-accent-gain-bg: rgba(16, 185, 129, 0.15);
-  --color-accent-loss: #EF4444;
+  --color-accent-loss: #fb7185;
   --color-accent-loss-bg: rgba(239, 68, 68, 0.14);
-  --color-accent-violet: #F28C28;
-  --color-accent-violet-bg: rgba(242, 140, 40, 0.14);
-  --color-accent-blue: #FF8A00;
-  --color-accent-amber: #E67E22;
+  --color-accent-violet: #8bb4ff;
+  --color-accent-violet-bg: rgba(139, 180, 255, 0.14);
+  --color-accent-blue: #5ea1ff;
+  --color-accent-amber: #f5b84b;
 }
 
 html.dark body {
@@ -135,9 +135,12 @@ html.dark ::-webkit-scrollbar-thumb:hover {
 
 body {
   min-height: 100%;
-  background: #f8fafc;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(245, 247, 251, 0) 18rem),
+    var(--color-bg-primary);
   color: var(--color-text-primary);
   font-family: var(--font-sans);
+  text-rendering: optimizeLegibility;
 }
 
 .font-display {
@@ -148,26 +151,7 @@ body {
   html,
   body,
   .glass-card,
-  button,
-  a,
-  input,
-  select,
-  textarea,
-  svg,
-  .bg-white,
-  .bg-slate-50,
-  .bg-slate-100,
-  .bg-slate-50\/50,
-  .text-slate-900,
-  .text-slate-800,
-  .text-slate-700,
-  .text-slate-600,
-  .text-slate-500,
-  .text-slate-400,
-  .border-slate-200,
-  .border-slate-100,
-  .border-slate-50,
-  .ring-slate-200 {
+  .theme-transition {
     transition:
       background-color 180ms ease,
       border-color 180ms ease,
@@ -207,9 +191,9 @@ body {
 
 .glass-card {
   background: #ffffff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border-default);
   border-radius: 1rem;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.06);
 }
 
 .dashboard-card {
@@ -219,13 +203,12 @@ body {
     border-color 180ms ease,
     background-color 180ms ease,
     color 180ms ease;
-  will-change: transform, box-shadow;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .dashboard-card:hover {
-    transform: translate3d(0, -4px, 0) !important;
-    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.14) !important;
+    transform: translate3d(0, -2px, 0) !important;
+    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.09) !important;
   }
 
   html.dark .dashboard-card:hover {
@@ -255,6 +238,17 @@ body {
   background-size: 200% 100%;
   animation: shimmer 1.4s ease-in-out infinite;
   border-radius: 0.75rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
 button,
@@ -297,8 +291,17 @@ select:focus-visible,
 textarea:focus-visible,
 button:focus-visible,
 a:focus-visible {
-  outline: 2px solid rgba(15, 23, 42, 0.25);
+  outline: 2px solid color-mix(in srgb, var(--color-accent-violet) 45%, transparent);
   outline-offset: 2px;
+}
+
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 .recharts-wrapper:focus,

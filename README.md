@@ -14,6 +14,7 @@ It is built with Next.js and Supabase and supports authenticated users, live mar
 - Auth with Supabase
 - Holdings stored per user in Supabase, with local fallback for demo mode
 - Import/export holdings as JSON
+- Screenshot-based holdings onboarding with AI-assisted extraction and verification
 - Price refresh across:
   - Yahoo Finance for Indian stocks and ETFs
   - Twelve Data for US ETFs and UAE stocks
@@ -70,9 +71,19 @@ Optional/market-data specific:
 ```bash
 TWELVE_DATA_API_KEY=...
 ALPHA_VANTAGE_API_KEY=...
+OPENROUTER_API_KEY=...
+OPENROUTER_MODEL=openrouter/free
+PORTFOLIO_IMPORT_PROVIDER=auto
+OPENAI_API_KEY=...
+OPENAI_MODEL=gpt-4o-mini
+RATE_LIMIT_IP_SALT=...
 ```
 
 Note: the app now uses Yahoo Finance for Indian equity pricing, so `ALPHA_VANTAGE_API_KEY` is no longer required for the current dashboard flow.
+For screenshot-based portfolio onboarding, configure either `OPENAI_API_KEY` or `OPENROUTER_API_KEY`. The default OpenRouter setup uses `OPENROUTER_MODEL=openrouter/free` to keep inference free and route to compatible image-plus-structured-output models. If you want a more predictable pinned free OCR-style model, use `nvidia/nemotron-nano-12b-v2-vl:free`.
+If `OPENAI_API_KEY` is present, screenshot import now defaults to OpenAI automatically unless you explicitly set `PORTFOLIO_IMPORT_PROVIDER=openrouter`. The recommended starting model is `gpt-4o-mini` for a better speed/cost balance, and you can switch to `gpt-4.1-mini` if you want a stronger extraction model.
+
+Production API protection is backed by Supabase through `supabase/migrations/20260512_create_api_rate_limits.sql`. Set `RATE_LIMIT_IP_SALT` to a random secret so stored IP buckets are hashed, and tune the `RATE_LIMIT_*` variables if your deployment needs different quotas.
 
 ## Local Development
 
@@ -96,6 +107,7 @@ Apply the holdings migration to your Supabase project:
 
 ```sql
 supabase/migrations/20260407_create_holdings_table.sql
+supabase/migrations/20260512_create_api_rate_limits.sql
 ```
 
 This creates:
@@ -111,6 +123,7 @@ This creates:
 - Dashboard edits sync back to Supabase automatically
 - `Import holdings` replaces the current user’s holdings in Supabase and updates local cache
 - `Reset` clears both Supabase and local cache
+- `Import from screenshots` drafts holdings through OpenRouter and requires user verification before saving
 
 ## PWA
 

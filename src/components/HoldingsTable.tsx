@@ -13,9 +13,19 @@ interface Props {
   onDelete: (id: string) => void;
   onPriceUpdate: (id: string, price: number) => void;
   onAddHolding: () => void;
+  onImportHoldings: () => void;
 }
 
-export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEdit, onDelete, onPriceUpdate, onAddHolding }: Props) {
+export default function HoldingsTable({
+  holdings,
+  isAmountsVisible,
+  onView,
+  onEdit,
+  onDelete,
+  onPriceUpdate,
+  onAddHolding,
+  onImportHoldings,
+}: Props) {
   const [filters, setFilters] = useState({
     platform: "All",
     assetClass: "All",
@@ -187,6 +197,17 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
     return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
   }
 
+  function formatSignedAed(value: number, visible: boolean) {
+    if (!visible) {
+      return formatOrMask(Math.abs(value), "AED", false);
+    }
+
+    const formatted = formatMoney(Math.abs(value), "AED");
+    if (value > 0) return `+${formatted}`;
+    if (value < 0) return `-${formatted}`;
+    return formatted;
+  }
+
   function clearFilters() {
     setFilters({
       platform: "All",
@@ -202,17 +223,30 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
   }
 
   return (
-    <section className="dashboard-card rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
-      <div className="border-b border-slate-200 p-4 sm:p-5">
+    <section className="dashboard-card overflow-hidden rounded-2xl border border-border-default bg-bg-card shadow-sm">
+      <div className="border-b border-border-default p-4 sm:p-5">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-xl font-semibold text-slate-900">Holdings</h2>
+          <div>
+            <h2 className="font-display text-xl font-semibold tracking-[-0.03em] text-text-primary">Holdings</h2>
+            <p className="mt-0.5 hidden text-sm text-text-muted sm:block">Search, sort, and update prices inline</p>
+          </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="text-xs text-slate-500 sm:text-sm">
+            <div className="rounded-full bg-bg-elevated px-2.5 py-1 text-xs font-medium text-text-muted sm:text-sm">
               {filteredHoldings.length} of {holdings.length}
             </div>
             <button
+              type="button"
+              onClick={() => {
+                tap();
+                onImportHoldings();
+              }}
+              className="hidden rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 sm:inline-flex"
+            >
+              Import
+            </button>
+            <button
               onClick={() => { tap(); onAddHolding(); }}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-accent-violet text-bg-primary shadow-sm transition hover:brightness-105"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-accent-violet text-bg-primary shadow-sm transition hover:brightness-105 active:scale-95 sm:h-9 sm:w-9"
               aria-label="Add holding"
             >
               <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
@@ -234,7 +268,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
             <button
               type="button"
               onClick={() => { tap(); setMobileFiltersOpen((current) => !current); }}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-border-default bg-bg-elevated px-3 py-2.5 text-sm font-medium text-text-secondary transition hover:bg-bg-card-hover"
               aria-expanded={mobileFiltersOpen}
               aria-label="Toggle filters"
             >
@@ -248,31 +282,42 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
               <button
                 type="button"
                 onClick={clearFilters}
-                className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+                className="rounded-xl border border-border-default px-3 py-2.5 text-sm font-medium text-text-secondary transition hover:bg-bg-elevated"
               >
                 Clear
               </button>
             ) : null}
           </div>
 
+          <button
+            type="button"
+            onClick={() => {
+              tap();
+              onImportHoldings();
+            }}
+            className="inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            Import screenshots
+          </button>
+
           {activeFilterChips.length ? (
-            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+            <div className="hide-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
               {activeFilterChips.map((chip) => (
                 <button
                   key={chip.key}
                   type="button"
                   onClick={() => clearSingleFilter(chip.key)}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-bg-elevated px-3 py-1.5 text-xs font-medium text-text-secondary"
                 >
                   <span>{chip.label}</span>
-                  <span className="text-slate-400">x</span>
+                  <span className="text-text-muted">x</span>
                 </button>
               ))}
             </div>
           ) : null}
 
           {mobileFiltersOpen ? (
-            <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+            <div className="grid gap-3 rounded-2xl border border-border-default bg-bg-elevated p-3">
               <FilterSelect label="Platform" value={filters.platform} options={platforms} onChange={(value) => setFilters({ ...filters, platform: value })} />
               <FilterSelect label="Class" value={filters.assetClass} options={["All", ...ASSET_CLASS_OPTIONS]} onChange={(value) => setFilters({ ...filters, assetClass: value })} />
               <FilterSelect label="Geography" value={filters.geography} options={["All", ...GEOGRAPHY_OPTIONS]} onChange={(value) => setFilters({ ...filters, geography: value })} />
@@ -290,10 +335,10 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-4 py-2 pr-6 sm:hidden">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Asset</span>
+      <div className="flex items-center justify-between border-b border-border-subtle bg-bg-elevated/70 px-4 py-2.5 pr-5 sm:hidden">
+        <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">Asset</span>
         <div className="flex shrink-0 items-center gap-1.5">
-          <span className="max-w-[3.9rem] text-center text-[8px] font-semibold uppercase leading-[1.05] tracking-[0.05em] text-slate-500">
+          <span className="max-w-[4.2rem] text-center text-[8px] font-semibold uppercase leading-[1.05] tracking-[0.05em] text-text-muted">
             {mobileColumn3Mode === "value" ? (
               <>
                 Current
@@ -311,7 +356,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
           <button
             type="button"
             onClick={handleMobileSort}
-            className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 active:bg-slate-100"
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-border-default bg-bg-card text-text-muted active:bg-bg-elevated"
             aria-label={
               mobileSortDir === null
                 ? "Sort descending"
@@ -333,7 +378,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
           <button
             type="button"
             onClick={() => { toggle(); setMobileColumn3Mode((mode) => (mode === "value" ? "return" : "value")); }}
-            className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 active:bg-slate-100"
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-border-default bg-bg-card text-text-muted active:bg-bg-elevated"
             aria-label="Toggle current and gain/loss view"
           >
             <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -343,16 +388,16 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
         </div>
       </div>
 
-      <div className="divide-y divide-slate-100 sm:hidden">
+      <div className="divide-y divide-border-subtle sm:hidden">
         {mobileSortedHoldings.length ? (
           mobileSortedHoldings.map((holding) => (
-            <div key={holding.id} className="bg-white">
-              <div className="flex items-center justify-between gap-3 px-4 py-3">
+            <div key={holding.id} className="bg-bg-card">
+              <div className="flex items-center justify-between gap-3 px-4 py-3.5">
                 <button type="button" className="min-w-0 flex-1 pr-3 text-left" onClick={() => { tap(); onView(holding); }}>
-                  <div className="truncate text-sm font-semibold text-slate-900">{getMobileAssetName(holding.assetName)}</div>
-                  <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
+                  <div className="truncate text-sm font-semibold text-text-primary">{getMobileAssetName(holding.assetName)}</div>
+                  <div className="mt-1 flex items-center gap-1.5 text-xs text-text-muted">
                     {getAssetMetaLine(holding).ticker ? (
-                      <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-700">
+                      <span className="rounded-md bg-bg-elevated px-1.5 py-0.5 font-mono text-[11px] text-text-secondary">
                         {getAssetMetaLine(holding).ticker}
                       </span>
                     ) : null}
@@ -364,19 +409,19 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                 <div className="text-right">
                   {mobileColumn3Mode === "value" ? (
                     <>
-                      <div className="font-mono text-xs font-medium text-slate-900">
+                      <div className="font-mono text-xs font-medium text-text-primary">
                         {formatOrMask(holding.currentValueAed, "AED", isAmountsVisible)}
                       </div>
-                      <div className="mt-0.5 font-mono text-[10px] text-slate-400">
+                      <div className="mt-0.5 font-mono text-[10px] text-text-muted">
                         ({formatOrMask(holding.investedAmountAed, "AED", isAmountsVisible).replace("AED", "").trim()})
                       </div>
                     </>
                   ) : (
                     <>
-                      <div className={`font-mono text-xs font-medium ${holding.gainLossAed >= 0 ? "text-green-600" : "text-red-600"}`}>
-                        {formatMoney(holding.gainLossAed, "AED")}
+                      <div className={`font-mono text-xs font-medium ${holding.gainLossAed >= 0 ? "text-accent-gain" : "text-accent-loss"}`}>
+                        {formatSignedAed(holding.gainLossAed, isAmountsVisible)}
                       </div>
-                      <div className="mt-0.5 text-[10px] text-slate-500">
+                      <div className="mt-0.5 text-[10px] text-text-muted">
                         {holding.gainLossPct >= 0 ? "+" : ""}
                         {holding.gainLossPct.toFixed(2)}%
                       </div>
@@ -387,27 +432,31 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                 <button
                   type="button"
                   onClick={() => { tap(); setActionMenuId((current) => (current === holding.id ? null : holding.id)); }}
-                  className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border-default bg-bg-card text-text-muted active:bg-bg-elevated"
                   aria-label={`Actions for ${holding.assetName}`}
                 >
-                  ...
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <circle cx="5" cy="12" r="1.7" />
+                    <circle cx="12" cy="12" r="1.7" />
+                    <circle cx="19" cy="12" r="1.7" />
+                  </svg>
                 </button>
               </div>
 
               {actionMenuId === holding.id && (
-                <div className="border-t border-slate-50 bg-slate-50/50 px-4 py-3">
+                <div className="border-t border-border-subtle bg-bg-elevated/70 px-4 py-3">
                   {pendingDeleteId === holding.id ? (
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-red-600">Delete {holding.assetName}?</span>
+                      <span className="text-xs text-accent-loss">Delete {holding.assetName}?</span>
                       <button
                         onClick={() => confirmDelete(holding.id)}
-                        className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white"
+                        className="rounded-lg bg-accent-loss px-3 py-1.5 text-xs font-medium text-white"
                       >
                         Confirm
                       </button>
                       <button
                         onClick={() => setPendingDeleteId(null)}
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700"
+                        className="rounded-lg border border-border-default bg-bg-card px-3 py-1.5 text-xs font-medium text-text-secondary"
                       >
                         Cancel
                       </button>
@@ -419,13 +468,13 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                           onEdit(holding);
                           setActionMenuId(null);
                         }}
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm"
+                        className="rounded-lg border border-border-default bg-bg-card px-3 py-2 text-xs font-medium text-text-secondary shadow-sm"
                       >
                         Edit Holding
                       </button>
                       <button
                         onClick={() => handleDeleteClick(holding)}
-                        className="rounded-lg border border-red-100 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 shadow-sm"
+                        className="rounded-lg border border-accent-loss/20 bg-accent-loss-bg px-3 py-2 text-xs font-medium text-accent-loss shadow-sm"
                       >
                         Delete
                       </button>
@@ -436,13 +485,13 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
             </div>
           ))
         ) : (
-          <div className="py-12 text-center text-sm text-slate-500">No holdings found</div>
+          <div className="py-12 text-center text-sm text-text-muted">No holdings found</div>
         )}
       </div>
 
       <div className="hidden overflow-x-auto sm:block">
         <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
+          <thead className="sticky top-0 z-10 border-b border-border-default bg-bg-card text-xs uppercase tracking-wider text-text-muted">
             <tr>
               <th className="w-10 whitespace-nowrap px-3 py-3 text-center">#</th>
               <SortHeader label="Asset" sortKey="asset" currentKey={sortKey} dir={sortDir} onSort={handleSort} className="px-5 py-3" />
@@ -462,15 +511,15 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
           <tbody>
             {sortedHoldings.length ? (
               sortedHoldings.map((holding, index) => (
-                <tr key={holding.id} className="cursor-pointer border-b border-slate-100 hover:bg-slate-50" onClick={() => onView(holding)}>
-                  <td className="w-10 whitespace-nowrap px-3 py-3.5 text-center text-sm font-semibold text-slate-400">
+                <tr key={holding.id} className="cursor-pointer border-b border-border-subtle transition-colors hover:bg-bg-elevated/70" onClick={() => onView(holding)}>
+                  <td className="w-10 whitespace-nowrap px-3 py-3.5 text-center text-sm font-semibold text-text-muted">
                     {index + 1}
                   </td>
                   <td className="px-5 py-3">
-                    <div className="font-medium text-slate-900">{holding.assetName}</div>
-                    <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
+                    <div className="max-w-[18rem] truncate font-medium text-text-primary">{holding.assetName}</div>
+                    <div className="mt-1 flex items-center gap-1.5 text-xs text-text-muted">
                       {getAssetMetaLine(holding).ticker ? (
-                        <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-700">
+                        <span className="rounded-md bg-bg-elevated px-1.5 py-0.5 font-mono text-[11px] text-text-secondary">
                           {getAssetMetaLine(holding).ticker}
                         </span>
                       ) : null}
@@ -485,52 +534,52 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                       value={holding.currentPrice || ""}
                       onChange={(event) => onPriceUpdate(holding.id, Number(event.target.value))}
                       onClick={(event) => event.stopPropagation()}
-                      className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 font-mono text-sm"
+                      className="w-24 rounded-lg border border-border-default bg-bg-input px-2 py-1.5 font-mono text-sm text-text-primary"
                       placeholder="0"
                     />
                   </td>
-                  <td className="px-3 py-3 text-center font-mono text-slate-600">
+                  <td className="px-3 py-3 text-center font-mono text-text-secondary">
                     {formatOrMask(holding.currentValue, holding.currency, isAmountsVisible)}
                   </td>
                   <td className="px-3 py-3 text-center">
-                    <div className="font-mono text-slate-900">
+                    <div className="font-mono text-text-primary">
                       {totalInvestedAed ? `${((holding.investedAmountAed / totalInvestedAed) * 100).toFixed(2)}%` : "0.00%"}
                     </div>
                   </td>
                   <td className="px-3 py-3">
-                    <div className="font-mono text-slate-900">
+                    <div className="font-mono text-text-primary">
                       {formatOrMask(holding.currentValueAed, "AED", isAmountsVisible)}
                     </div>
-                    <div className="mt-0.5 font-mono text-xs text-slate-500">
+                    <div className="mt-0.5 font-mono text-xs text-text-muted">
                       ({formatOrMask(holding.investedAmountAed, "AED", isAmountsVisible).replace("AED", "").trim()})
                     </div>
                   </td>
                   <td className="px-3 py-3">
                     {holding.hasDayGain ? (
                       <>
-                        <div className={`font-mono font-medium ${holding.dayGainAed >= 0 ? "text-green-600" : "text-red-600"}`}>
-                          {formatMoney(holding.dayGainAed, "AED")}
+                        <div className={`font-mono font-medium ${holding.dayGainAed >= 0 ? "text-accent-gain" : "text-accent-loss"}`}>
+                          {formatSignedAed(holding.dayGainAed, isAmountsVisible)}
                         </div>
-                        <div className={`mt-0.5 text-xs ${holding.dayGainAed >= 0 ? "text-green-600/80" : "text-red-600/80"}`}>
+                        <div className={`mt-0.5 text-xs ${holding.dayGainAed >= 0 ? "text-accent-gain" : "text-accent-loss"}`}>
                           {holding.dayGainPct === null ? "—" : formatSignedPercent(holding.dayGainPct)}
                         </div>
                       </>
                     ) : (
                       <>
-                        <div className="font-mono font-medium text-slate-400">—</div>
-                        <div className="mt-0.5 text-xs text-slate-400">—</div>
+                        <div className="font-mono font-medium text-text-muted">—</div>
+                        <div className="mt-0.5 text-xs text-text-muted">—</div>
                       </>
                     )}
                   </td>
                   <td className="px-3 py-3">
-                    <div className={`font-mono font-medium ${holding.gainLossAed >= 0 ? "text-green-600" : "text-red-600"}`}>
-                      {formatMoney(holding.gainLossAed, "AED")}
+                    <div className={`font-mono font-medium ${holding.gainLossAed >= 0 ? "text-accent-gain" : "text-accent-loss"}`}>
+                      {formatSignedAed(holding.gainLossAed, isAmountsVisible)}
                     </div>
-                    <div className="mt-0.5 text-xs text-slate-500">
+                    <div className="mt-0.5 text-xs text-text-muted">
                       {formatSignedPercent(holding.gainLossPct)}
                     </div>
                   </td>
-                  <td className="px-3 py-3 text-xs text-slate-500">{timeAgo(holding.lastPriceUpdate)}</td>
+                  <td className="px-3 py-3 text-xs text-text-muted">{timeAgo(holding.lastPriceUpdate)}</td>
                   <td className="relative px-3 py-3">
                     <button
                       onClick={(event) => {
@@ -538,24 +587,29 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                         tap();
                         setActionMenuId(actionMenuId === holding.id ? null : holding.id);
                       }}
-                      className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-default bg-bg-card text-text-muted hover:bg-bg-elevated"
+                      aria-label={`Actions for ${holding.assetName}`}
                     >
-                      ...
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <circle cx="5" cy="12" r="1.7" />
+                        <circle cx="12" cy="12" r="1.7" />
+                        <circle cx="19" cy="12" r="1.7" />
+                      </svg>
                     </button>
                     {actionMenuId === holding.id && (
-                      <div className="absolute right-3 top-12 z-20 min-w-28 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+                      <div className="absolute right-3 top-12 z-20 min-w-36 overflow-hidden rounded-xl border border-border-default bg-bg-card shadow-xl">
                         {pendingDeleteId === holding.id ? (
                           <>
-                            <div className="px-4 py-2.5 text-xs font-medium text-red-600">Delete {holding.assetName}?</div>
+                            <div className="px-4 py-2.5 text-xs font-medium text-accent-loss">Delete {holding.assetName}?</div>
                             <button
                               onClick={(event) => { event.stopPropagation(); confirmDelete(holding.id); }}
-                              className="block w-full px-4 py-2.5 text-left text-xs font-semibold text-red-600 hover:bg-red-50"
+                              className="block w-full px-4 py-2.5 text-left text-xs font-semibold text-accent-loss hover:bg-accent-loss-bg"
                             >
                               Confirm delete
                             </button>
                             <button
                               onClick={(event) => { event.stopPropagation(); setPendingDeleteId(null); }}
-                              className="block w-full px-4 py-2.5 text-left text-xs text-slate-600 hover:bg-slate-50"
+                              className="block w-full px-4 py-2.5 text-left text-xs text-text-secondary hover:bg-bg-elevated"
                             >
                               Cancel
                             </button>
@@ -568,7 +622,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                                 onEdit(holding);
                                 setActionMenuId(null);
                               }}
-                              className="block w-full px-4 py-2.5 text-left text-xs text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                              className="block w-full px-4 py-2.5 text-left text-xs text-text-secondary hover:bg-bg-elevated hover:text-text-primary"
                             >
                               Edit
                             </button>
@@ -577,7 +631,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                                 event.stopPropagation();
                                 handleDeleteClick(holding);
                               }}
-                              className="block w-full px-4 py-2.5 text-left text-xs text-red-600 hover:bg-slate-50"
+                              className="block w-full px-4 py-2.5 text-left text-xs text-accent-loss hover:bg-accent-loss-bg"
                             >
                               Delete
                             </button>
@@ -590,7 +644,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
               ))
             ) : (
               <tr>
-                <td colSpan={10} className="py-12 text-center text-slate-500">
+                <td colSpan={10} className="py-12 text-center text-text-muted">
                   No holdings
                 </td>
               </tr>
@@ -630,9 +684,23 @@ const SortHeader = memo(function SortHeader({
           {children || label}
         </div>
         <span
-          className={`text-[10px] transition-colors group-hover:text-text-secondary ${isActive ? "text-text-primary" : "text-text-muted"}`}
+          className={`transition-colors group-hover:text-text-secondary ${isActive ? "text-text-primary" : "text-text-muted"}`}
         >
-          {isActive ? (dir === "asc" ? "\u25B2" : "\u25BC") : "\u21C5"}
+          <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            {isActive ? (
+              dir === "asc" ? (
+                <path d="M12 19V5m0 0l-5 5m5-5l5 5" />
+              ) : (
+                <path d="M12 5v14m0 0l5-5m-5 5l-5-5" />
+              )
+            ) : (
+              <>
+                <path d="M8 7h8" />
+                <path d="M8 12h6" />
+                <path d="M8 17h3" />
+              </>
+            )}
+          </svg>
         </span>
       </div>
     </th>
@@ -652,12 +720,12 @@ function FilterInput({
 }) {
   return (
     <label className="text-sm">
-      <span className="mb-1 block text-slate-600">{label}</span>
+      <span className="mb-1 block text-text-secondary">{label}</span>
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-slate-200 px-3 py-2"
+        className="w-full rounded-xl border border-border-default bg-bg-input px-3 py-2.5 text-text-primary placeholder:text-text-muted"
       />
     </label>
   );
@@ -676,8 +744,8 @@ function FilterSelect({
 }) {
   return (
     <label className="text-sm">
-      <span className="mb-1 block text-slate-600">{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2">
+      <span className="mb-1 block text-text-secondary">{label}</span>
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-xl border border-border-default bg-bg-input px-3 py-2.5 text-text-primary">
         {options.map((option) => (
           <option key={option} value={option}>
             {option}

@@ -1,6 +1,5 @@
 import { DEFAULT_HOLDINGS, type Holding } from "@/lib/constants";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
-import { fetchRemoteHoldings, upsertRemoteHoldings, deleteRemoteHolding } from "@/lib/holdings-store";
 import { createClient } from "@/lib/supabase/client";
 
 export const DEFAULT_INR_TO_AED_RATE = 0.044;
@@ -45,6 +44,30 @@ function parseStoredTimestamp(raw: string | null) {
   return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : DEFAULT_FX_UPDATED_AT;
 }
 
+async function requestHoldingsApi<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
+  const response = await fetch(input, {
+    cache: "no-store",
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers || {}),
+    },
+  });
+
+  const payload = (await response.json().catch(() => null)) as { error?: string } & T | null;
+
+  if (!response.ok) {
+    throw new Error(payload?.error || `Holdings API request failed (${response.status})`);
+  }
+
+  return (payload || {}) as T;
+}
+
+async function fetchRemoteHoldingsState() {
+  const payload = await requestHoldingsApi<{ holdings?: Holding[] }>("/api/holdings");
+  return payload.holdings || [];
+}
+
 export async function loadDashboardPersistenceState() {
   const supabase = createClient();
   const {
@@ -57,14 +80,14 @@ export async function loadDashboardPersistenceState() {
   const fxUpdatedAt = parseStoredTimestamp(localStorage.getItem(getFxUpdatedAtStorageKey(userId)));
 
   try {
-    const remoteHoldings = await fetchRemoteHoldings(supabase, userId);
+    const remoteHoldings = userId === "default" ? null : await fetchRemoteHoldingsState();
 
     if (remoteHoldings && remoteHoldings.length > 0) {
       const { normalized, changed } = normalizeHoldings(remoteHoldings);
       persistLocalHoldings(userId, normalized);
 
       if (changed) {
-        await upsertRemoteHoldings(supabase, userId, normalized);
+        await upsertRemoteHoldingsState(userId, normalized);
       }
 
       return { userId, holdings: normalized, inrToAedRate, fxUpdatedAt };
@@ -72,7 +95,9 @@ export async function loadDashboardPersistenceState() {
 
     if (storedHoldings) {
       persistLocalHoldings(userId, storedHoldings);
-      await upsertRemoteHoldings(supabase, userId, storedHoldings);
+      if (userId !== "default") {
+        await upsertRemoteHoldingsState(userId, storedHoldings);
+      }
       return { userId, holdings: storedHoldings, inrToAedRate, fxUpdatedAt };
     }
   } catch {
@@ -106,28 +131,48 @@ export function persistFxUpdatedAt(userId: string, fxUpdatedAt: string | null) {
 }
 
 export async function syncDashboardHoldingsFromRemote(userId: string) {
-  const supabase = createClient();
-  const remoteHoldings = await fetchRemoteHoldings(supabase, userId);
-
-  if (!remoteHoldings) {
+  if (userId === "default") {
     return null;
   }
 
+  const remoteHoldings = await fetchRemoteHoldingsState();
   const { normalized, changed } = normalizeHoldings(remoteHoldings);
 
   if (changed) {
-    await upsertRemoteHoldings(supabase, userId, normalized);
+    await upsertRemoteHoldingsState(userId, normalized);
   }
 
   return normalized;
 }
 
 export async function upsertRemoteHoldingsState(userId: string, holdings: Holding[]) {
-  const supabase = createClient();
-  await upsertRemoteHoldings(supabase, userId, holdings);
+  if (userId === "default") {
+    return;
+  }
+
+  await requestHoldingsApi("/api/holdings", {
+    method: "PATCH",
+    body: JSON.stringify({ holdings }),
+  });
+}
+
+export async function replaceRemoteHoldingsState(userId: string, holdings: Holding[]) {
+  if (userId === "default") {
+    return;
+  }
+
+  await requestHoldingsApi("/api/holdings", {
+    method: "PUT",
+    body: JSON.stringify({ holdings }),
+  });
 }
 
 export async function deleteRemoteHoldingState(userId: string, id: string) {
-  const supabase = createClient();
-  await deleteRemoteHolding(supabase, userId, id);
+  if (userId === "default") {
+    return;
+  }
+
+  await requestHoldingsApi(`/api/holdings?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
 }
