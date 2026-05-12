@@ -17,7 +17,7 @@ export const HOLDINGS_IMPORT_MAX_FILES = 4;
 export const HOLDINGS_IMPORT_MAX_FILE_SIZE_BYTES = 6 * 1024 * 1024;
 export const HOLDINGS_IMPORT_ROUTE = "/api/holdings/extract";
 
-export type ModelProvider = "openrouter";
+export type ModelProvider = "openrouter" | "openai";
 
 export interface ImportableHoldingDraft {
   platform: string;
@@ -69,6 +69,16 @@ const HOLDINGS_COLLECTION_KEYS = [
   "extractedHoldings",
   "extracted_holdings",
 ] as const;
+const ASSET_NAME_TICKER_HINTS: Array<{ pattern: RegExp; ticker: string }> = [
+  { pattern: /\btesla\b/i, ticker: "TSLA" },
+  { pattern: /\bapple\b/i, ticker: "AAPL" },
+  { pattern: /\bmicrosoft\b/i, ticker: "MSFT" },
+  { pattern: /\bbitcoin\b/i, ticker: "BTC" },
+  { pattern: /\bethereum\b/i, ticker: "ETH" },
+  { pattern: /\bgold\s*bees\b/i, ticker: "GOLDBEES" },
+  { pattern: /\bmid\s*150\s*bees\b/i, ticker: "MID150BEES" },
+  { pattern: /\bhdfc\s*small\s*cap\s*250\b/i, ticker: "HDFCSML250" },
+];
 
 function getObjectValue(record: Record<string, unknown>, keys: readonly string[]) {
   for (const key of keys) {
@@ -91,6 +101,31 @@ function clampNumber(value: unknown, fallback = 0, minimum = 0) {
 
 function asTrimmedString(value: unknown, fallback = "") {
   return typeof value === "string" ? value.trim() : fallback;
+}
+
+export function parseLikelyJson(content: string): unknown {
+  try {
+    return JSON.parse(content);
+  } catch {
+    const fencedMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    if (fencedMatch?.[1]) {
+      return JSON.parse(fencedMatch[1].trim());
+    }
+
+    const arrayStart = content.indexOf("[");
+    const arrayEnd = content.lastIndexOf("]");
+    if (arrayStart !== -1 && arrayEnd > arrayStart) {
+      return JSON.parse(content.slice(arrayStart, arrayEnd + 1));
+    }
+
+    const objectStart = content.indexOf("{");
+    const objectEnd = content.lastIndexOf("}");
+    if (objectStart !== -1 && objectEnd > objectStart) {
+      return JSON.parse(content.slice(objectStart, objectEnd + 1));
+    }
+
+    throw new Error("No parseable JSON found in model response.");
+  }
 }
 
 function inferNumber(value: unknown, fallback = 0) {
@@ -119,6 +154,34 @@ function inferString(record: Record<string, unknown>, keys: readonly string[], f
 
 function inferNumberFromKeys(record: Record<string, unknown>, keys: readonly string[], fallback = 0) {
   return clampNumber(inferNumber(getObjectValue(record, keys), fallback), fallback);
+}
+
+function inferTickerFromAssetName(assetName: string) {
+  const match = ASSET_NAME_TICKER_HINTS.find(({ pattern }) => pattern.test(assetName));
+  return match?.ticker || "";
+}
+
+function isLikelyTickerSymbol(value: string) {
+  const ticker = value.trim().toUpperCase();
+  if (!ticker) return false;
+  if (ticker.length > 15) return false;
+  if (ticker.includes(" ")) return false;
+  if (/[^A-Z0-9.:_-]/.test(ticker)) return false;
+  if (!/[A-Z]/.test(ticker)) return false;
+  return true;
+}
+
+function sanitizeInferredTicker(rawTicker: string, assetName: string) {
+  const normalizedTicker = rawTicker.trim().toUpperCase();
+  if (isLikelyTickerSymbol(normalizedTicker)) {
+    return normalizedTicker;
+  }
+
+  if (normalizedTicker && assetName.trim() && normalizedTicker === assetName.trim().toUpperCase()) {
+    return "";
+  }
+
+  return inferTickerFromAssetName(assetName);
 }
 
 export function normalizePlatform(value: string): Platform {
@@ -203,7 +266,10 @@ export function sanitizeHoldingDraft(input: unknown, platformHint?: string | nul
     return null;
   }
 
-  const ticker = inferString(record, ["ticker", "symbol", "code", "securityCode", "security_code"]).toUpperCase();
+  const ticker = sanitizeInferredTicker(
+    inferString(record, ["ticker", "symbol", "code", "securityCode", "security_code"]),
+    assetName
+  );
   const geography = normalizeGeography(inferString(record, ["geography", "region", "market", "exchange"], "Others"));
   const assetClass = normalizeAssetClass(inferString(record, ["assetClass", "asset_class", "type", "instrumentType", "instrument_type"], "Others"));
   const currency = normalizeCurrency(inferString(record, ["currency", "currencyCode", "currency_code", "money"], ""), geography);
@@ -431,6 +497,9 @@ export function buildHoldingsExtractionPrompt(platformHint?: string | null) {
     "Return only JSON that matches the provided schema.",
     "The top-level object must include platformHint, warnings, usedModel, and holdings.",
     "If strict schema formatting is not possible, return either that object shape or a top-level JSON array of holding objects.",
+    "Never use a full company or fund name as the ticker symbol.",
+    "If the ticker is not clearly visible or you are unsure, return an empty string for ticker instead of guessing.",
+    "If a common market symbol is obvious from the screenshot, prefer the short tradable symbol such as TSLA, AAPL, BTC, GOLDBEES, or MID150BEES.",
     "If a value is not visible, infer conservatively and add a warning or extraction note.",
     "Do not invent holdings that are not visible.",
     "Treat each screenshot as part of one combined portfolio upload.",

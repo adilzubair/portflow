@@ -4,7 +4,10 @@ import {
   HOLDINGS_IMPORT_MAX_FILES,
   fileToImagePayload,
 } from "@/lib/ai/holdings-import";
+import { resolveHoldingsImportProvider } from "@/lib/ai/provider";
+import { extractHoldingsWithOpenAI } from "@/lib/ai/providers/openai";
 import { extractHoldingsWithOpenRouter } from "@/lib/ai/providers/openrouter";
+import { RATE_LIMIT_POLICIES, enforceRateLimits } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
@@ -15,6 +18,18 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rateLimitResponse = await enforceRateLimits({
+      request,
+      client: supabase,
+      userId: user.id,
+      accountPolicy: RATE_LIMIT_POLICIES.aiExtractAccount,
+      ipPolicy: RATE_LIMIT_POLICIES.aiExtractIp,
+    });
+
+    if (rateLimitResponse) {
+      return rateLimitResponse;
     }
 
     const formData = await request.formData();
@@ -33,7 +48,11 @@ export async function POST(request: Request) {
     }
 
     const images = await Promise.all(files.map((file) => fileToImagePayload(file)));
-    const extraction = await extractHoldingsWithOpenRouter({ images, platformHint });
+    const provider = resolveHoldingsImportProvider();
+    const extraction =
+      provider === "openai"
+        ? await extractHoldingsWithOpenAI({ images, platformHint })
+        : await extractHoldingsWithOpenRouter({ images, platformHint });
 
     return NextResponse.json(extraction);
   } catch (error) {

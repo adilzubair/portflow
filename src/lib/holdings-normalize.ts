@@ -24,6 +24,23 @@ function looksLikeEtf(holding: Holding) {
   );
 }
 
+function looksLikeValidTicker(ticker: string) {
+  const trimmedTicker = ticker.trim().toUpperCase();
+  if (!trimmedTicker) return false;
+  if (trimmedTicker.length > 15) return false;
+  if (trimmedTicker.includes(" ")) return false;
+  return /^[A-Z0-9._:-]+$/.test(trimmedTicker);
+}
+
+function inferTickerFromName(assetName: string) {
+  if (/\btesla\b/i.test(assetName)) return "TSLA";
+  if (/\bbitcoin\b/i.test(assetName)) return "BTC";
+  if (/\bgold\s*bees\b/i.test(assetName)) return "GOLDBEES";
+  if (/\bmid\s*150\s*bees\b/i.test(assetName)) return "MID150BEES";
+  if (/\bhdfc\s*small\s*cap\s*250\b/i.test(assetName)) return "HDFCSML250";
+  return "";
+}
+
 function getDefaultAllocationClass(holding: Holding) {
   return holding.allocationClass ?? holding.assetClass;
 }
@@ -33,6 +50,11 @@ export function normalizeHolding(holding: Holding): Holding {
   const defaultAllocationClass = getDefaultAllocationClass(normalized);
 
   normalized.allocationClass = defaultAllocationClass;
+  normalized.ticker = normalized.ticker.trim().toUpperCase();
+
+  if (!looksLikeValidTicker(normalized.ticker)) {
+    normalized.ticker = inferTickerFromName(normalized.assetName);
+  }
 
   if (normalized.assetClass === "Mutual Funds" && looksLikeEtf(normalized)) {
     normalized.assetClass = "ETFs";
@@ -65,6 +87,10 @@ export function normalizeHolding(holding: Holding): Holding {
 
   if (normalized.assetClass === "Crypto" && normalized.ticker === "BTC") {
     normalized.priceSource = "coingecko";
+  }
+
+  if (!normalized.ticker && normalized.assetClass !== "Mutual Funds") {
+    normalized.priceSource = "manual";
   }
 
   return normalized;

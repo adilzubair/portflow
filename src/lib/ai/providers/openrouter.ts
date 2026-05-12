@@ -1,5 +1,6 @@
 import {
   HOLDINGS_EXTRACTION_SCHEMA,
+  parseLikelyJson,
   type HoldingsExtractionResult,
   type ImagePayload,
   buildHoldingsExtractionPrompt,
@@ -47,31 +48,6 @@ function getOpenRouterHeaders() {
     ...(process.env.OPENROUTER_APP_URL ? { "HTTP-Referer": process.env.OPENROUTER_APP_URL } : {}),
     ...(process.env.OPENROUTER_APP_NAME ? { "X-Title": process.env.OPENROUTER_APP_NAME } : {}),
   };
-}
-
-function parseLikelyJson(content: string): unknown {
-  try {
-    return JSON.parse(content);
-  } catch {
-    const fencedMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/i);
-    if (fencedMatch?.[1]) {
-      return JSON.parse(fencedMatch[1].trim());
-    }
-
-    const arrayStart = content.indexOf("[");
-    const arrayEnd = content.lastIndexOf("]");
-    if (arrayStart !== -1 && arrayEnd > arrayStart) {
-      return JSON.parse(content.slice(arrayStart, arrayEnd + 1));
-    }
-
-    const objectStart = content.indexOf("{");
-    const objectEnd = content.lastIndexOf("}");
-    if (objectStart !== -1 && objectEnd > objectStart) {
-      return JSON.parse(content.slice(objectStart, objectEnd + 1));
-    }
-
-    throw new Error("No parseable JSON found in model response.");
-  }
 }
 
 export async function extractHoldingsWithOpenRouter({
@@ -200,6 +176,7 @@ export async function extractHoldingsWithOpenRouter({
     try {
       const parsed = parseLikelyJson(content);
       const result = sanitizeHoldingsExtractionResult(parsed, attempt.model);
+      result.provider = "openrouter";
       result.usedModel = payload.model || result.usedModel;
 
       if (!attempt.responseFormat || attempt.responseFormat.type === "json_object") {

@@ -40,22 +40,26 @@ execute function public.set_holdings_updated_at();
 
 alter table public.holdings enable row level security;
 
+drop policy if exists "holdings_select_own" on public.holdings;
 create policy "holdings_select_own"
 on public.holdings
 for select
 using (auth.uid() = user_id);
 
+drop policy if exists "holdings_insert_own" on public.holdings;
 create policy "holdings_insert_own"
 on public.holdings
 for insert
 with check (auth.uid() = user_id);
 
+drop policy if exists "holdings_update_own" on public.holdings;
 create policy "holdings_update_own"
 on public.holdings
 for update
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
 
+drop policy if exists "holdings_delete_own" on public.holdings;
 create policy "holdings_delete_own"
 on public.holdings
 for delete

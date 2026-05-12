@@ -4,10 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { type Holding } from "@/lib/constants";
 import { tap, success as hapticSuccess, destructive as hapticDestructive, medium } from "@/lib/haptics";
-import { DEFAULT_INR_TO_AED_RATE, getRateStorageKey } from "@/lib/dashboard/persistence";
+import { DEFAULT_INR_TO_AED_RATE, getRateStorageKey, replaceRemoteHoldingsState } from "@/lib/dashboard/persistence";
 import { buildBackfilledSnapshots } from "@/lib/history-backfill";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
-import { replaceRemoteHoldings } from "@/lib/holdings-store";
 import { fetchPortfolioSnapshots, replacePortfolioSnapshots } from "@/lib/portfolio-snapshots";
 import { createClient } from "@/lib/supabase/client";
 
@@ -176,8 +175,7 @@ export default function SettingsPage() {
           return;
         }
         const { normalized } = normalizeHoldings(parsed);
-        const supabase = createClient();
-        await replaceRemoteHoldings(supabase, userId, normalized);
+        await replaceRemoteHoldingsState(userId, normalized);
         localStorage.setItem(storageKey, JSON.stringify(normalized));
         router.refresh();
       } catch (error) {
@@ -197,8 +195,7 @@ export default function SettingsPage() {
     setResetting(true);
     setDataError(null);
     try {
-      const supabase = createClient();
-      await replaceRemoteHoldings(supabase, userId, []);
+      await replaceRemoteHoldingsState(userId, []);
       localStorage.removeItem(storageKey);
       setResetConfirming(false);
       router.refresh();
