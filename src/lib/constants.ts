@@ -114,17 +114,6 @@ export interface ComputedHolding extends Holding {
 // ──────────────────────────────────────────────
 export const DEFAULT_HOLDINGS: Holding[] = [];
 
-export const PIE_COLORS = [
-  '#0f172a', // Slate 900
-  '#334155', // Slate 700
-  '#64748b', // Slate 500
-  '#94a3b8', // Slate 400
-  '#cbd5e1', // Slate 300
-  '#e2e8f0', // Slate 200
-  '#1e293b', // Slate 800
-  '#475569', // Slate 600
-];
-
 export const DARK_PIE_COLORS = [
   '#4A4DFF',
   '#F24B8A',
