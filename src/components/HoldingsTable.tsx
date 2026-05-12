@@ -240,7 +240,7 @@ export default function HoldingsTable({
                 tap();
                 onImportHoldings();
               }}
-              className="hidden rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 sm:inline-flex"
+              className="hidden rounded-full border border-border-default bg-bg-elevated px-3 py-2 text-xs font-semibold text-text-secondary transition hover:bg-bg-card-hover hover:text-text-primary sm:inline-flex"
             >
               Import
             </button>
@@ -295,7 +295,7 @@ export default function HoldingsTable({
               tap();
               onImportHoldings();
             }}
-            className="inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="inline-flex w-full items-center justify-center rounded-xl border border-border-default bg-bg-card px-3 py-2 text-sm font-semibold text-text-secondary transition hover:bg-bg-elevated hover:text-text-primary"
           >
             Import screenshots
           </button>
@@ -307,10 +307,13 @@ export default function HoldingsTable({
                   key={chip.key}
                   type="button"
                   onClick={() => clearSingleFilter(chip.key)}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-bg-elevated px-3 py-1.5 text-xs font-medium text-text-secondary"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border-default bg-bg-elevated px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:bg-bg-card-hover hover:text-text-primary"
+                  aria-label={`Remove ${chip.label} filter`}
                 >
                   <span>{chip.label}</span>
-                  <span className="text-text-muted">x</span>
+                  <svg className="h-3 w-3 text-text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
                 </button>
               ))}
             </div>
@@ -485,7 +488,27 @@ export default function HoldingsTable({
             </div>
           ))
         ) : (
-          <div className="py-12 text-center text-sm text-text-muted">No holdings found</div>
+          <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bg-elevated text-text-muted">
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M21 21l-4.3-4.3" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-text-primary">No holdings match your filters</p>
+              <p className="mt-1 text-xs text-text-muted">Try clearing search or filter chips.</p>
+            </div>
+            {activeFilterCount ? (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="rounded-full border border-border-default bg-bg-card px-4 py-1.5 text-xs font-semibold text-text-secondary transition hover:bg-bg-elevated hover:text-text-primary"
+              >
+                Clear filters
+              </button>
+            ) : null}
+          </div>
         )}
       </div>
 
@@ -531,10 +554,10 @@ export default function HoldingsTable({
                     <input
                       type="number"
                       step="any"
-                      value={holding.currentPrice || ""}
+                      value={Number.isFinite(holding.currentPrice) ? holding.currentPrice : ""}
                       onChange={(event) => onPriceUpdate(holding.id, Number(event.target.value))}
                       onClick={(event) => event.stopPropagation()}
-                      className="w-24 rounded-lg border border-border-default bg-bg-input px-2 py-1.5 font-mono text-sm text-text-primary"
+                      className="w-24 rounded-lg border border-border-default bg-bg-input px-2 py-1.5 font-mono text-sm text-text-primary transition focus:border-accent-violet"
                       placeholder="0"
                     />
                   </td>
@@ -644,8 +667,28 @@ export default function HoldingsTable({
               ))
             ) : (
               <tr>
-                <td colSpan={10} className="py-12 text-center text-text-muted">
-                  No holdings
+                <td colSpan={10} className="px-6 py-12 text-center">
+                  <div className="mx-auto flex max-w-sm flex-col items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bg-elevated text-text-muted">
+                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <circle cx="11" cy="11" r="7" />
+                        <path d="M21 21l-4.3-4.3" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-text-primary">No holdings match your filters</p>
+                      <p className="mt-1 text-xs text-text-muted">Try clearing search or filter chips.</p>
+                    </div>
+                    {activeFilterCount ? (
+                      <button
+                        type="button"
+                        onClick={clearFilters}
+                        className="rounded-full border border-border-default bg-bg-card px-4 py-1.5 text-xs font-semibold text-text-secondary transition hover:bg-bg-elevated hover:text-text-primary"
+                      >
+                        Clear filters
+                      </button>
+                    ) : null}
+                  </div>
                 </td>
               </tr>
             )}

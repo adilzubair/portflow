@@ -90,7 +90,7 @@ export default function LoginPage() {
                   {mode === "login" ? "Sign in" : "Create account"}
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-text-secondary">
-                  {mode === "login" ? "Welcome back. Your dashboard is ready." : "Create your account and start tracking holdings."}
+                  {mode === "login" ? "Welcome back. Sign in to continue." : "Get started — track holdings across markets."}
                 </p>
               </div>
 
@@ -142,7 +142,7 @@ export default function LoginPage() {
                 </button>
               </form>
 
-              <div className="mt-6 border-t border-white/6 pt-5">
+              <div className="mt-6 border-t border-border-subtle pt-5">
                 <button
                   type="button"
                   onClick={() => {

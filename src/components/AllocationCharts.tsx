@@ -192,9 +192,9 @@ export default function AllocationCharts({ holdings, totalValue, totalInvested }
             onClick={() => { tap(); scrollToMobileChart(mobileChartIndex - 1); }}
             className="absolute left-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border shadow-sm"
             style={{
-              borderColor: isDarkMode ? "var(--color-border-default)" : "#e2e8f0",
-              backgroundColor: isDarkMode ? "rgba(15, 17, 23, 0.95)" : "rgba(255, 255, 255, 0.95)",
-              color: isDarkMode ? "var(--color-text-secondary)" : "#475569",
+              borderColor: "var(--color-border-default)",
+              backgroundColor: "var(--color-bg-card)",
+              color: "var(--color-text-secondary)",
             }}
             aria-label="Show previous chart"
           >
@@ -208,9 +208,9 @@ export default function AllocationCharts({ holdings, totalValue, totalInvested }
             onClick={() => { tap(); scrollToMobileChart(mobileChartIndex + 1); }}
             className="absolute right-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border shadow-sm"
             style={{
-              borderColor: isDarkMode ? "var(--color-border-default)" : "#e2e8f0",
-              backgroundColor: isDarkMode ? "rgba(15, 17, 23, 0.95)" : "rgba(255, 255, 255, 0.95)",
-              color: isDarkMode ? "var(--color-text-secondary)" : "#475569",
+              borderColor: "var(--color-border-default)",
+              backgroundColor: "var(--color-bg-card)",
+              color: "var(--color-text-secondary)",
             }}
             aria-label="Show next chart"
           >

@@ -207,13 +207,13 @@ export default function DashboardPage() {
       ) : null}
 
       {refreshError ? (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <div className="rounded-2xl border border-accent-loss/20 bg-accent-loss-bg px-4 py-3 text-sm text-accent-loss">
           Refresh failed. Existing prices are still shown. {refreshError}
         </div>
       ) : null}
 
       {!refreshError && refreshFailures.length > 0 ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="rounded-2xl border border-accent-amber/30 bg-accent-amber/10 px-4 py-3 text-sm text-accent-amber">
           Prices updated, but {failureSummary} {refreshFailures.length === 1 ? "was" : "were"} unavailable.
         </div>
       ) : null}

@@ -106,7 +106,7 @@ function PortfolioValueSparkline({
           cx={lastPoint.x}
           cy={lastPoint.y}
           r="7.6"
-          fill="rgba(255, 92, 92, 0.24)"
+          fill="rgba(37, 99, 235, 0.24)"
           filter="url(#portfolio-summary-live-dot-glow)"
         >
           <animate attributeName="r" values="6.1;10.8;6.1" dur="1.35s" repeatCount="indefinite" />
@@ -116,7 +116,7 @@ function PortfolioValueSparkline({
           cx={lastPoint.x}
           cy={lastPoint.y}
           r="5.6"
-          fill="rgba(255, 92, 92, 0.34)"
+          fill="rgba(37, 99, 235, 0.36)"
           filter="url(#portfolio-summary-live-dot-glow)"
         >
           <animate attributeName="r" values="5.1;6.5;5.1" dur="1.05s" repeatCount="indefinite" />
@@ -126,7 +126,7 @@ function PortfolioValueSparkline({
           cx={lastPoint.x}
           cy={lastPoint.y}
           r="3.5"
-          fill="#ff5c5c"
+          fill="#2563eb"
           filter="url(#portfolio-summary-live-dot-glow)"
         />
         <circle cx={lastPoint.x} cy={lastPoint.y} r="1.2" fill="rgba(255,255,255,0.98)" />
