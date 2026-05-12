@@ -25,24 +25,6 @@ function validateHoldings(data: unknown): data is Holding[] {
   );
 }
 
-interface ApiStatus {
-  name: string;
-  description: string;
-  status: "ok" | "missing" | "unknown";
-  keyRequired: boolean;
-  envVar?: string;
-}
-
-const apiStatuses: ApiStatus[] = [
-  { name: "MFAPI.in", description: "Indian mutual fund NAV data", status: "ok", keyRequired: false },
-  { name: "CoinGecko", description: "Cryptocurrency prices", status: "ok", keyRequired: false },
-  { name: "Frankfurter", description: "Currency exchange rates", status: "ok", keyRequired: false },
-  { name: "Binance WebSocket", description: "Real-time BTC price stream", status: "ok", keyRequired: false },
-  { name: "Yahoo Finance (India)", description: "Indian stocks and ETFs on NSE", status: "ok", keyRequired: false },
-  { name: "Yahoo Finance (US ETFs)", description: "US stocks and ETFs", status: "ok", keyRequired: false },
-  { name: "Twelve Data", description: "Optional fallback for UAE stocks on DFM", status: "unknown", keyRequired: true, envVar: "TWELVE_DATA_API_KEY" },
-];
-
 const IMPORT_FIELDS: { field: string; type: string; hint: string }[] = [
   { field: "id", type: "string", hint: 'Unique identifier — e.g. "holding-1"' },
   { field: "assetName", type: "string", hint: 'Display name — e.g. "Reliance Industries"' },
@@ -51,7 +33,7 @@ const IMPORT_FIELDS: { field: string; type: string; hint: string }[] = [
   { field: "geography", type: "enum", hint: "India · US · UAE · Global · Others" },
   { field: "currency", type: "enum", hint: "AED · USD · INR" },
   { field: "quantity", type: "number", hint: "Units held" },
-  { field: "avgBuyPrice", type: "number", hint: "Average purchase price in the holding's currency" },
+  { field: "avgBuyPrice", type: "number", hint: "Average purchase price in the holding&apos;s currency" },
   { field: "currentPrice", type: "number", hint: "Latest price — refreshed automatically after import" },
   { field: "priceSource", type: "enum", hint: "mfapi · coingecko · twelvedata · alphavantage · frankfurter · dfm · manual" },
 ];
@@ -71,27 +53,9 @@ const EXAMPLE_JSON = `[
   }
 ]`;
 
-function statusColor(result: string | undefined, defaultStatus: "ok" | "missing" | "unknown") {
-  if (!result) {
-    if (defaultStatus === "ok") return "bg-accent-gain";
-    return "bg-text-muted";
-  }
-  if (result === "Checking") return "bg-amber-400 animate-pulse";
-  if (result === "Healthy") return "bg-accent-gain";
-  if (result === "Ready") return "bg-accent-gain";
-  return "bg-accent-loss";
-}
-
-function statusLabel(result: string | undefined, defaultStatus: "ok" | "missing" | "unknown") {
-  if (!result) return defaultStatus === "ok" ? "Ready" : "Not checked";
-  return result;
-}
-
 export default function SettingsPage() {
   const router = useRouter();
   const [userId, setUserId] = useState<string>("default");
-  const [testResults, setTestResults] = useState<Record<string, string>>({});
-  const [testing, setTesting] = useState(false);
   const [rebuildingHistory, setRebuildingHistory] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [resetConfirming, setResetConfirming] = useState(false);
@@ -108,35 +72,6 @@ export default function SettingsPage() {
 
   const storageKey = `portflow-holdings-${userId}`;
   const rateStorageKey = getRateStorageKey(userId);
-
-  const testEndpoint = async (path: string) => {
-    try {
-      const response = await fetch(path);
-      const contentType = response.headers.get("content-type") || "";
-      if (!contentType.includes("application/json")) return "Unexpected response";
-      const data = await response.json();
-      return data.success ? "Healthy" : data.error || "Error";
-    } catch {
-      return "Connection failed";
-    }
-  };
-
-  const runTests = async () => {
-    setTesting(true);
-    const endpoints = [
-      { name: "MFAPI.in", path: "/api/prices/indian-mf" },
-      { name: "Yahoo Finance (India)", path: "/api/prices/indian-stocks" },
-      { name: "Yahoo Finance (US ETFs)", path: "/api/prices/us-etfs" },
-      { name: "CoinGecko", path: "/api/prices/crypto" },
-      { name: "Frankfurter", path: "/api/prices/currency" },
-    ];
-    setTestResults(Object.fromEntries(endpoints.map((e) => [e.name, "Checking"])));
-    const settled = await Promise.all(
-      endpoints.map(async (endpoint) => [endpoint.name, await testEndpoint(endpoint.path)] as const)
-    );
-    setTestResults(Object.fromEntries(settled));
-    setTesting(false);
-  };
 
   const rebuildHistory = async () => {
     setRebuildingHistory(true);
@@ -212,53 +147,9 @@ export default function SettingsPage() {
       {/* Page header */}
       <div className="px-1">
         <h1 className="font-display text-3xl font-semibold tracking-[-0.04em] text-text-primary">Settings</h1>
-        <p className="mt-1.5 text-sm leading-6 text-text-secondary">Manage your data, check API connectivity, and learn how to format imports.</p>
+        <p className="mt-1.5 text-sm leading-6 text-text-secondary">Manage your portfolio data and learn how to format imports.</p>
       </div>
 
-      {/* Service health */}
-      <section className="glass-card overflow-hidden">
-        <div className="flex flex-col gap-3 border-b border-border-default px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="font-display text-lg font-semibold tracking-[-0.03em] text-text-primary">Service health</h2>
-            <p className="mt-0.5 text-sm text-text-secondary">Live status of the market data sources Portflow connects to.</p>
-          </div>
-          <button
-            onClick={() => { tap(); runTests(); }}
-            disabled={testing}
-            className="self-start rounded-full bg-accent-violet px-5 py-2.5 text-sm font-semibold text-bg-primary transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-55 sm:self-auto"
-          >
-            {testing ? "Running…" : "Run checks"}
-          </button>
-        </div>
-
-        <div className="divide-y divide-border-default/50">
-          {apiStatuses.map((api) => {
-            const result = testResults[api.name];
-            const label = statusLabel(result, api.status);
-            const dot = statusColor(result, api.status);
-            return (
-              <div key={api.name} className="grid gap-3 px-6 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-                <div className="flex flex-col gap-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-semibold text-text-primary">{api.name}</span>
-                    <span className="rounded-full border border-border-default bg-bg-elevated px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-widest text-text-muted">
-                      {api.keyRequired ? "Key required" : "Keyless"}
-                    </span>
-                  </div>
-                  <p className="text-xs leading-5 text-text-secondary">{api.description}</p>
-                  {api.envVar && <code className="text-[0.68rem] text-text-muted">{api.envVar}</code>}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`h-2 w-2 shrink-0 rounded-full ${dot}`} />
-                  <span className="text-sm text-text-secondary">{label}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Data management + Import guide */}
       <div className="grid gap-5 xl:grid-cols-2">
 
         {/* Data management */}
