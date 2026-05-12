@@ -1,11 +1,12 @@
 import {
   HOLDINGS_EXTRACTION_SCHEMA,
   parseLikelyJson,
-  type HoldingsExtractionResult,
   type ImagePayload,
   buildHoldingsExtractionPrompt,
   sanitizeHoldingsExtractionResult,
 } from "@/lib/ai/holdings-import";
+import type { ProviderUsage } from "@/lib/ai/usage";
+import type { ExtractionWithUsage } from "@/lib/ai/providers/openai";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 export const DEFAULT_OPENROUTER_MODEL = "openrouter/free";
@@ -20,6 +21,14 @@ interface OpenRouterChoice {
 interface OpenRouterResponse {
   model?: string;
   choices?: OpenRouterChoice[];
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+    /** Authoritative cost when the request includes `usage: { include: true }`. */
+    total_cost?: number;
+    cost?: number;
+  };
 }
 
 interface ExtractionAttempt {
@@ -56,7 +65,7 @@ export async function extractHoldingsWithOpenRouter({
 }: {
   images: ImagePayload[];
   platformHint?: string | null;
-}): Promise<HoldingsExtractionResult> {
+}): Promise<ExtractionWithUsage> {
   const configuredModel = process.env.OPENROUTER_MODEL || DEFAULT_OPENROUTER_MODEL;
   const attempts: ExtractionAttempt[] = [];
 
@@ -135,6 +144,7 @@ export async function extractHoldingsWithOpenRouter({
         },
         ...(attempt.responseFormat ? { response_format: attempt.responseFormat } : {}),
         plugins: [{ id: "response-healing" }],
+        usage: { include: true },
         messages: [
           {
             role: "system",
@@ -177,7 +187,8 @@ export async function extractHoldingsWithOpenRouter({
       const parsed = parseLikelyJson(content);
       const result = sanitizeHoldingsExtractionResult(parsed, attempt.model);
       result.provider = "openrouter";
-      result.usedModel = payload.model || result.usedModel;
+      const usedModel = payload.model || result.usedModel || attempt.model;
+      result.usedModel = usedModel;
 
       if (!attempt.responseFormat || attempt.responseFormat.type === "json_object") {
         result.warnings = [
@@ -187,7 +198,20 @@ export async function extractHoldingsWithOpenRouter({
       }
 
       if (result.holdings.length > 0) {
-        return result;
+        const promptTokens = payload.usage?.prompt_tokens ?? 0;
+        const completionTokens = payload.usage?.completion_tokens ?? 0;
+        const totalTokens = payload.usage?.total_tokens ?? promptTokens + completionTokens;
+        const reportedCost = payload.usage?.total_cost ?? payload.usage?.cost;
+
+        const usage: ProviderUsage = {
+          promptTokens,
+          completionTokens,
+          totalTokens,
+          costUsd: typeof reportedCost === "number" ? reportedCost : 0,
+          costEstimated: typeof reportedCost !== "number",
+        };
+
+        return { result, usage, model: usedModel };
       }
 
       errors.push(`${attempt.label} [${attempt.model}] returned parseable JSON but no holdings were extracted.`);
