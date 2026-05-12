@@ -160,8 +160,8 @@ function SummaryCard({
         : "text-text-primary";
 
   return (
-    <div className={`dashboard-card relative overflow-hidden rounded-xl border border-border-default bg-bg-card shadow-sm ${isPrimary ? "p-6 sm:p-7" : "p-5 sm:p-6"}`}>
-      <div className={`text-sm ${isPrimary ? "pl-1 font-medium text-text-secondary" : "text-text-secondary"}`}>{label}</div>
+    <div className={`dashboard-card relative overflow-hidden rounded-2xl border border-border-default bg-bg-card shadow-sm ${isPrimary ? "p-5 sm:p-6 lg:p-7" : "p-4 sm:p-5 lg:p-6"}`}>
+      <div className={`text-[0.78rem] font-semibold uppercase tracking-[0.14em] ${isPrimary ? "text-text-muted" : "text-text-muted"}`}>{label}</div>
       <div className={`relative z-10 ${isPrimary ? "mt-1" : "mt-3"} font-semibold leading-tight ${isPrimary ? `text-3xl sm:text-[2.15rem] ${toneClass}` : `text-2xl sm:text-[2rem] ${toneClass}`}`}>
         {value}
       </div>
@@ -191,14 +191,17 @@ export default function PortfolioSummaryStrip({
   return (
     <>
       <section className="sm:hidden">
-        <div className="overflow-hidden rounded-[1.4rem] border border-border-default bg-bg-card px-4 py-4 text-text-primary shadow-sm">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-muted">
-            Holdings ({holdingsCount})
-          </div>
-          <div className="mt-2 flex items-center justify-between gap-2">
-            <div className="flex items-baseline gap-1 font-mono font-semibold leading-none tracking-[-0.06em] text-text-primary">
-              {mobilePortfolioValue.currency ? <span className="text-[1.32rem]">{mobilePortfolioValue.currency}</span> : null}
-              <span className="text-[1.5rem]">{mobilePortfolioValue.amount}</span>
+        <div className="overflow-hidden rounded-[1.35rem] border border-border-default bg-bg-card px-4 py-4 text-text-primary shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-muted">
+                Portfolio value
+              </div>
+              <div className="mt-2 flex min-w-0 items-baseline gap-1 font-mono font-semibold leading-none tracking-[-0.04em] text-text-primary">
+                {mobilePortfolioValue.currency ? <span className="text-[1.1rem]">{mobilePortfolioValue.currency}</span> : null}
+                <span className="min-w-0 truncate text-[1.55rem]">{mobilePortfolioValue.amount}</span>
+              </div>
+              <div className="mt-2 text-xs font-medium text-text-muted">{holdingsCount} holdings</div>
             </div>
             <button
               type="button"
@@ -210,7 +213,7 @@ export default function PortfolioSummaryStrip({
                   })
                 );
               }}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-border-default bg-bg-card text-text-secondary"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border-default bg-bg-elevated text-text-secondary active:scale-95"
               aria-label={isAmountsVisible ? "Hide values" : "Show values"}
             >
               {isAmountsVisible ? (
@@ -229,8 +232,8 @@ export default function PortfolioSummaryStrip({
             </button>
           </div>
 
-          <div className="mt-4 border-t border-dashed border-border-default pt-3">
-            <div className="flex items-start justify-between gap-3 py-2">
+          <div className="mt-4 grid gap-2 border-t border-dashed border-border-default pt-3">
+            <div className="flex items-start justify-between gap-3 rounded-xl bg-bg-elevated px-3 py-2.5">
               <div className="text-sm text-text-secondary">1D returns</div>
               <div className={`text-right text-base font-semibold ${dailyChange >= 0 ? "text-accent-gain" : "text-accent-loss"}`}>
                 {formatSignedMoney(dailyChange, "AED", isAmountsVisible)}
@@ -240,7 +243,7 @@ export default function PortfolioSummaryStrip({
               </div>
             </div>
 
-            <div className="flex items-start justify-between gap-3 py-2">
+            <div className="flex items-start justify-between gap-3 rounded-xl bg-bg-elevated px-3 py-2.5">
               <div className="text-sm text-text-secondary">Total returns</div>
               <div className={`text-right text-base font-semibold ${totalGainLoss >= 0 ? "text-accent-gain" : "text-accent-loss"}`}>
                 {formatSignedMoney(totalGainLoss, "AED", isAmountsVisible)}
@@ -250,7 +253,7 @@ export default function PortfolioSummaryStrip({
               </div>
             </div>
 
-            <div className="flex items-start justify-between gap-3 py-2">
+            <div className="flex items-start justify-between gap-3 rounded-xl bg-bg-elevated px-3 py-2.5">
               <div className="text-sm text-text-secondary">Invested</div>
               <div className="text-right text-base font-semibold text-text-primary">
                 {formatOrMask(investedAmount, "AED", isAmountsVisible)}
@@ -260,7 +263,7 @@ export default function PortfolioSummaryStrip({
         </div>
       </section>
 
-      <section className="hidden gap-3 sm:grid sm:grid-cols-2 sm:gap-4 xl:grid-cols-[1.3fr_1fr_1fr]">
+      <section className="hidden gap-3 sm:grid sm:grid-cols-2 sm:gap-4 xl:grid-cols-[1.35fr_1fr_1fr]">
         <SummaryCard
           label={`Holdings (${holdingsCount})`}
           value={desktopPortfolioValue}

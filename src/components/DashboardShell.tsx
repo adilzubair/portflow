@@ -109,30 +109,30 @@ export default function DashboardShell({
 
   const userInitial = user.email?.[0]?.toUpperCase() || "U";
   const iconButtonClass =
-    "h-8 w-8 items-center justify-center rounded-full text-slate-700 transition hover:bg-slate-100 sm:h-9 sm:w-9";
+    "h-10 w-10 items-center justify-center rounded-xl text-text-secondary transition hover:bg-bg-elevated hover:text-text-primary active:scale-95 sm:h-9 sm:w-9 sm:rounded-lg";
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 sm:p-6">
-      <div className="mx-auto max-w-7xl space-y-4 sm:space-y-6">
-        <header className="bg-transparent px-0 py-1 sm:py-1.5">
+    <div className="min-h-screen bg-bg-primary px-3 py-3 sm:px-5 sm:py-5 lg:px-8">
+      <div className="mx-auto max-w-7xl space-y-4 sm:space-y-5">
+        <header className="sticky top-3 z-40 rounded-2xl border border-border-default/80 bg-bg-card/90 px-3 py-2.5 shadow-sm backdrop-blur-md sm:top-5 sm:px-4">
           <div className="flex items-center justify-between gap-3">
-            <a href="/dashboard" className="font-display text-[1.65rem] font-semibold tracking-[-0.04em] text-slate-900 sm:text-[1.8rem]">
+            <a href="/dashboard" className="font-display text-[1.45rem] font-semibold tracking-[-0.04em] text-text-primary sm:text-[1.7rem]">
               Portflow
             </a>
             <div className="flex items-center gap-2 sm:gap-2.5">
               {statusMeta ? (
-                <div className="hidden items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500 md:flex">
+                <div className="hidden items-center rounded-xl border border-border-default bg-bg-elevated/70 px-3 py-1.5 text-[11px] font-medium text-text-muted md:flex">
                   <span>{statusMeta.lastRefresh}</span>
-                  <span className="mx-2 h-3.5 w-px bg-slate-200" aria-hidden="true" />
+                  <span className="mx-2 h-3.5 w-px bg-border-default" aria-hidden="true" />
                   <span>
-                    AED/INR <span className="font-mono text-slate-600">{statusMeta.fxRate}</span>
+                    AED/INR <span className="font-mono text-text-secondary">{statusMeta.fxRate}</span>
                   </span>
-                  <span className="mx-2 h-3.5 w-px bg-slate-200" aria-hidden="true" />
+                  <span className="mx-2 h-3.5 w-px bg-border-default" aria-hidden="true" />
                   <span>{statusMeta.fxUpdatedAt}</span>
                 </div>
               ) : null}
 
-              <div className="flex items-center rounded-full border border-slate-200 bg-slate-50 p-1">
+              <div className="flex items-center rounded-2xl border border-border-default bg-bg-elevated/70 p-0.5 sm:rounded-xl">
                 <button
                   onClick={() => {
                     tap();
@@ -202,26 +202,26 @@ export default function DashboardShell({
               <div ref={profileMenuRef} className="relative">
                 <button
                   onClick={() => { tap(); setProfileMenuOpen((current) => !current); }}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700"
+                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border-default bg-bg-elevated text-sm font-semibold text-text-primary transition hover:bg-bg-card-hover active:scale-95 sm:h-9 sm:w-9 sm:rounded-xl"
                   aria-label="Open profile menu"
                 >
                   {userInitial}
                 </button>
 
                 {profileMenuOpen && (
-                  <div className="absolute right-0 top-11 z-50 min-w-56 overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-slate-200">
-                    <div className="border-b border-slate-200 px-4 py-3">
-                      <div className="truncate text-sm font-semibold text-slate-900">{user.email}</div>
+                  <div className="absolute right-0 top-12 z-50 min-w-60 overflow-hidden rounded-2xl bg-bg-card shadow-xl ring-1 ring-border-default">
+                    <div className="border-b border-border-default px-4 py-3">
+                      <div className="truncate text-sm font-semibold text-text-primary">{user.email}</div>
                     </div>
                     <a
                       href="/dashboard/settings"
-                      className="block w-full px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
+                      className="block w-full px-4 py-3 text-left text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary"
                     >
                       Settings
                     </a>
                     <button
                       onClick={handleSignOut}
-                      className="block w-full px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
+                      className="block w-full px-4 py-3 text-left text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary"
                     >
                       Sign Out
                     </button>
@@ -230,6 +230,13 @@ export default function DashboardShell({
               </div>
             </div>
           </div>
+          {statusMeta ? (
+            <div className="mt-2 flex items-center gap-2 overflow-hidden border-t border-border-subtle pt-2 text-[11px] font-medium text-text-muted md:hidden">
+              <span className="truncate">{statusMeta.lastRefresh}</span>
+              <span className="h-1 w-1 shrink-0 rounded-full bg-border-default" aria-hidden="true" />
+              <span className="shrink-0 font-mono">AED/INR {statusMeta.fxRate}</span>
+            </div>
+          ) : null}
         </header>
 
         <main>{children}</main>
