@@ -6,6 +6,7 @@ import {
   buildHoldingsExtractionPrompt,
   sanitizeHoldingsExtractionResult,
 } from "@/lib/ai/holdings-import";
+import { computeOpenAiCost, type ProviderUsage } from "@/lib/ai/usage";
 
 const OPENAI_URL = "https://api.openai.com/v1/responses";
 export const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
@@ -24,6 +25,17 @@ interface OpenAIResponse {
   model?: string;
   output_text?: string;
   output?: OpenAIResponseOutputItem[];
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+    total_tokens?: number;
+  };
+}
+
+export interface ExtractionWithUsage {
+  result: HoldingsExtractionResult;
+  usage: ProviderUsage;
+  model: string;
 }
 
 function getOpenAIHeaders() {
@@ -64,7 +76,7 @@ export async function extractHoldingsWithOpenAI({
 }: {
   images: ImagePayload[];
   platformHint?: string | null;
-}): Promise<HoldingsExtractionResult> {
+}): Promise<ExtractionWithUsage> {
   const model = process.env.OPENAI_MODEL || DEFAULT_OPENAI_MODEL;
   const response = await fetch(OPENAI_URL, {
     method: "POST",
@@ -118,6 +130,20 @@ export async function extractHoldingsWithOpenAI({
   const parsed = parseLikelyJson(extractOpenAIOutputText(payload));
   const result = sanitizeHoldingsExtractionResult(parsed, model);
   result.provider = "openai";
-  result.usedModel = payload.model || result.usedModel || model;
-  return result;
+  const usedModel = payload.model || result.usedModel || model;
+  result.usedModel = usedModel;
+
+  const promptTokens = payload.usage?.input_tokens ?? 0;
+  const completionTokens = payload.usage?.output_tokens ?? 0;
+  const totalTokens = payload.usage?.total_tokens ?? promptTokens + completionTokens;
+
+  const usage: ProviderUsage = {
+    promptTokens,
+    completionTokens,
+    totalTokens,
+    costUsd: computeOpenAiCost(usedModel, promptTokens, completionTokens),
+    costEstimated: true,
+  };
+
+  return { result, usage, model: usedModel };
 }
