@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { tap, toggle, destructive as hapticDestructive } from "@/lib/haptics";
 import { requestDashboardRefresh } from "@/lib/dashboard/refresh-controller";
@@ -116,9 +117,9 @@ export default function DashboardShell({
       <div className="mx-auto max-w-7xl space-y-4 sm:space-y-5">
         <header className="sticky top-3 z-40 rounded-2xl border border-border-default/80 bg-bg-card/90 px-3 py-2.5 shadow-sm backdrop-blur-md sm:top-5 sm:px-4">
           <div className="flex items-center justify-between gap-3">
-            <a href="/dashboard" className="font-display text-[1.45rem] font-semibold tracking-[-0.04em] text-text-primary sm:text-[1.7rem]">
+            <Link href="/dashboard" className="font-display text-[1.45rem] font-semibold tracking-[-0.04em] text-text-primary sm:text-[1.7rem]">
               Portflow
-            </a>
+            </Link>
             <div className="flex items-center gap-2 sm:gap-2.5">
               {statusMeta ? (
                 <div className="hidden items-center rounded-xl border border-border-default bg-bg-elevated/70 px-3 py-1.5 text-[11px] font-medium text-text-muted md:flex">
@@ -213,12 +214,13 @@ export default function DashboardShell({
                     <div className="border-b border-border-default px-4 py-3">
                       <div className="truncate text-sm font-semibold text-text-primary">{user.email}</div>
                     </div>
-                    <a
+                    <Link
                       href="/dashboard/settings"
+                      onClick={() => setProfileMenuOpen(false)}
                       className="block w-full px-4 py-3 text-left text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary"
                     >
                       Settings
-                    </a>
+                    </Link>
                     <button
                       onClick={handleSignOut}
                       className="block w-full px-4 py-3 text-left text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary"

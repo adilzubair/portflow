@@ -155,28 +155,6 @@ export default function HoldingsTable({
     setActionMenuId(null);
   }
 
-  function getMobileAssetName(assetName: string) {
-    const trimmedName = assetName.trim();
-
-    if (/^bandhan small cap fund/i.test(trimmedName)) {
-      return "Bandhan Small Cap MF";
-    }
-
-    if (/^motilal( oswal)? midcap fund/i.test(trimmedName)) {
-      return "Motilal Mid Cap MF";
-    }
-
-    if (/^mirae asset nifty midcap 150 etf/i.test(trimmedName)) {
-      return "Nifty Mid Cap 150 ETF";
-    }
-
-    if (/^ishares bitcoin trust etf/i.test(trimmedName)) {
-      return "iShare Bitcoin ETF";
-    }
-
-    return trimmedName;
-  }
-
   function formatQuantity(quantity: number) {
     if (quantity < 1) {
       return quantity.toFixed(7).replace(/0+$/, "").replace(/\.$/, "");
@@ -397,7 +375,7 @@ export default function HoldingsTable({
             <div key={holding.id} className="bg-bg-card">
               <div className="flex items-center justify-between gap-3 px-4 py-3.5">
                 <button type="button" className="min-w-0 flex-1 pr-3 text-left" onClick={() => { tap(); onView(holding); }}>
-                  <div className="truncate text-sm font-semibold text-text-primary">{getMobileAssetName(holding.assetName)}</div>
+                  <div className="truncate text-sm font-semibold text-text-primary">{holding.assetName.trim()}</div>
                   <div className="mt-1 flex items-center gap-1.5 text-xs text-text-muted">
                     {getAssetMetaLine(holding).ticker ? (
                       <span className="rounded-md bg-bg-elevated px-1.5 py-0.5 font-mono text-[11px] text-text-secondary">

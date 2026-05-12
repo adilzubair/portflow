@@ -1,46 +1,64 @@
 /**
- * Haptic feedback patterns for mobile PWA interactions.
- * Uses the Vibration API (navigator.vibrate) — silently no-ops
- * on browsers/devices that don't support it.
+ * Haptic feedback for mobile PWA interactions.
+ *
+ * Powered by `web-haptics`, which combines navigator.vibrate (Android)
+ * with the AudioContext + <input type="checkbox" switch> trick that
+ * triggers haptics on iOS Safari. The instance is created lazily on the
+ * first client-side call so SSR and the initial render stay clean.
  */
 
-function vibrate(pattern: number | number[]) {
-  if (typeof navigator !== "undefined" && navigator.vibrate) {
-    navigator.vibrate(pattern);
+import { WebHaptics, type HapticInput } from "web-haptics";
+
+let instance: WebHaptics | null = null;
+
+function getInstance(): WebHaptics | null {
+  if (typeof window === "undefined") return null;
+  if (!instance) {
+    instance = new WebHaptics();
   }
+  return instance;
 }
 
-/** Light 10ms tap — standard buttons, menu opens, navigation */
+function trigger(input: HapticInput) {
+  const inst = getInstance();
+  if (!inst) return;
+  // Fire and forget — callers don't await the vibration.
+  inst.trigger(input).catch(() => {
+    /* swallow errors — haptics are best-effort */
+  });
+}
+
+/** Light tap — standard buttons, menu opens, navigation */
 export function tap() {
-  vibrate(10);
+  trigger("light");
 }
 
-/** Very subtle 5ms pulse — form focus, micro-interactions */
+/** Very subtle — form focus, micro-interactions */
 export function subtle() {
-  vibrate(5);
+  trigger("selection");
 }
 
-/** Double-pulse toggle — visibility, theme, mode switches */
+/** Selection-style pulse — visibility, theme, mode switches */
 export function toggle() {
-  vibrate([10, 30, 10]);
+  trigger("selection");
 }
 
-/** Stronger initial pulse — destructive intent (first tap on delete) */
+/** Stronger pulse — destructive intent (first tap on delete) */
 export function medium() {
-  vibrate([15, 30]);
+  trigger("medium");
 }
 
-/** Ascending pattern — successful form submit, import, refresh complete */
+/** Two-step ascending pattern — successful submit, import, refresh complete */
 export function success() {
-  vibrate([10, 20, 30]);
+  trigger("success");
 }
 
-/** Strong warning double-pulse — confirmed destructive action */
+/** Strong triple-pulse — confirmed destructive action */
 export function destructive() {
-  vibrate([20, 40, 20]);
+  trigger("error");
 }
 
-/** Pull-to-refresh threshold crossed */
+/** Heavy then soft — pull-to-refresh threshold crossed */
 export function threshold() {
-  vibrate([15, 40, 10]);
+  trigger("nudge");
 }
