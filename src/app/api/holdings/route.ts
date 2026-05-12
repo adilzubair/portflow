@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { Holding } from "@/lib/constants";
 import { deleteRemoteHolding, fetchRemoteHoldings, replaceRemoteHoldings, upsertRemoteHoldings } from "@/lib/holdings-store";
+import { resolveHoldings } from "@/lib/holdings-resolver";
 import { RATE_LIMIT_POLICIES, enforceRateLimits } from "@/lib/rate-limit";
 import { checkApproval, createClient } from "@/lib/supabase/server";
 
@@ -82,7 +83,8 @@ export async function PUT(request: Request) {
     }
 
     const body = (await request.json()) as { holdings?: Holding[] };
-    await replaceRemoteHoldings(supabase, user.id, body.holdings || []);
+    const { resolved } = await resolveHoldings(body.holdings || []);
+    await replaceRemoteHoldings(supabase, user.id, resolved);
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: getErrorMessage(error, "Failed to replace holdings") }, { status: 500 });
@@ -106,7 +108,8 @@ export async function PATCH(request: Request) {
     }
 
     const body = (await request.json()) as { holdings?: Holding[] };
-    await upsertRemoteHoldings(supabase, user.id, body.holdings || []);
+    const { resolved } = await resolveHoldings(body.holdings || []);
+    await upsertRemoteHoldings(supabase, user.id, resolved);
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: getErrorMessage(error, "Failed to update holdings") }, { status: 500 });
