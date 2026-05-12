@@ -77,17 +77,20 @@ export default function AllocationCharts({ holdings, totalValue, totalInvested }
     return new Map(Object.entries(LIGHT_GEOGRAPHY_COLORS));
   }, [byGeography, isDarkMode]);
 
-  const chartCards = [
-    { title: "By platform", items: byPlatform, colorMap: platformColorMap },
-    {
-      title: "By category",
-      items: activeByAssetClass,
-      colorMap: assetClassColorMap,
-      metric: categoryMetric,
-      onMetricChange: setCategoryMetric,
-    },
-    { title: "By geography", items: byGeography, colorMap: geographyColorMap },
-  ];
+  const chartCards = useMemo(
+    () => [
+      { title: "By platform", items: byPlatform, colorMap: platformColorMap },
+      {
+        title: "By category",
+        items: activeByAssetClass,
+        colorMap: assetClassColorMap,
+        metric: categoryMetric,
+        onMetricChange: setCategoryMetric,
+      },
+      { title: "By geography", items: byGeography, colorMap: geographyColorMap },
+    ],
+    [activeByAssetClass, assetClassColorMap, byGeography, byPlatform, categoryMetric, geographyColorMap, platformColorMap]
+  );
 
   const activeMobileChart = chartCards[mobileChartIndex] ?? chartCards[0];
 
@@ -159,8 +162,7 @@ export default function AllocationCharts({ holdings, totalValue, totalInvested }
         <div className="relative">
           <div
             ref={mobileTrackRef}
-            className="flex items-stretch snap-x snap-mandatory overflow-x-auto scroll-smooth"
-            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            className="hide-scrollbar flex items-stretch snap-x snap-mandatory overflow-x-auto scroll-smooth"
             aria-label={`${activeMobileChart.title} chart`}
           >
             {chartCards.map((chart, index) => (
@@ -225,7 +227,7 @@ export default function AllocationCharts({ holdings, totalValue, totalInvested }
                 key={chart.title}
                 type="button"
                 onClick={() => { tap(); scrollToMobileChart(index); }}
-                className={`h-2 rounded-full transition-all ${index === mobileChartIndex ? "w-5 bg-slate-700" : "w-2 bg-slate-300"}`}
+                className={`h-2 rounded-full transition-all ${index === mobileChartIndex ? "w-5 bg-text-primary" : "w-2 bg-border-default"}`}
                 aria-label={`Show ${chart.title} chart`}
               />
             ))}
@@ -269,14 +271,14 @@ function PieAllocationCard({
 
   return (
     <div
-      className="dashboard-card flex h-full flex-col overflow-hidden rounded-2xl border p-4 shadow-sm"
+      className="dashboard-card flex h-full flex-col overflow-hidden rounded-2xl border p-4 shadow-sm sm:p-5"
       style={{
         backgroundColor: isDarkMode ? "var(--color-bg-card)" : "#ffffff",
         borderColor: isDarkMode ? "var(--color-border-default)" : "#e2e8f0",
       }}
     >
       <div className="flex items-start justify-between gap-3">
-        <h2 style={{ color: isDarkMode ? "var(--color-text-primary)" : "#0f172a" }} className="font-display text-base font-semibold tracking-[-0.02em]">
+        <h2 style={{ color: isDarkMode ? "var(--color-text-primary)" : "#0f172a" }} className="font-display text-base font-semibold tracking-[-0.02em] sm:text-lg">
           {title}
         </h2>
         {showMetricToggle ? (

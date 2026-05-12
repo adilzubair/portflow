@@ -161,7 +161,7 @@ export default function DashboardPage() {
           opacity: isPullRefreshing || pullDistance > 0 ? 1 : 0,
         }}
       >
-        <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 shadow-sm">
+        <div className="inline-flex items-center gap-2 rounded-full border border-border-default bg-bg-card px-3 py-2 text-xs font-medium text-text-secondary shadow-sm">
           <svg
             className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
             fill="none"

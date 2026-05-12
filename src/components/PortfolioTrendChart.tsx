@@ -190,16 +190,17 @@ export default function PortfolioTrendChart({ chartData, isAmountsVisible }: Pro
   const chartGridColor = isDarkMode ? "rgba(203, 213, 225, 0.08)" : "rgba(15, 23, 42, 0.05)";
 
   return (
-    <section className="dashboard-card rounded-2xl border border-border-default bg-bg-card p-5 shadow-sm sm:p-6">
-      <div>
+    <section className="dashboard-card rounded-2xl border border-border-default bg-bg-card p-4 shadow-sm sm:p-5 lg:p-6">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="font-display text-[1.05rem] font-semibold tracking-[-0.04em] text-text-primary sm:text-xl">
+          <h2 className="font-display text-[1.05rem] font-semibold tracking-[-0.03em] text-text-primary sm:text-xl">
             Portfolio Balance
           </h2>
+          <p className="mt-1 text-sm text-text-muted">Invested capital against current market value</p>
         </div>
       </div>
 
-      <div className="mt-5 h-[230px] w-full min-h-0 min-w-0">
+      <div className="mt-4 h-[220px] w-full min-h-0 min-w-0 sm:h-[250px]">
         {formattedChartData.length ? (
           <MeasuredChart className="h-full w-full min-h-0 min-w-0">
             {({ width, height }) => (
@@ -208,7 +209,7 @@ export default function PortfolioTrendChart({ chartData, isAmountsVisible }: Pro
               height={height}
               data={formattedChartData}
               accessibilityLayer={false}
-              margin={{ top: 8, right: 6, left: 0, bottom: 0 }}
+                margin={{ top: 10, right: 6, left: 0, bottom: 0 }}
             >
               <defs>
                 <linearGradient id="portfolio-value-fill" x1="0" y1="0" x2="0" y2="1">
@@ -281,7 +282,7 @@ export default function PortfolioTrendChart({ chartData, isAmountsVisible }: Pro
         )}
       </div>
 
-      <div className="mt-4 flex items-center gap-4 text-xs text-text-secondary">
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-text-secondary">
         <div className="inline-flex items-center gap-2">
           <span className="h-0 w-5 border-t-[1.5px] border-dashed" style={{ borderColor: investedLineColor }} />
           <span>Invested Amount</span>
