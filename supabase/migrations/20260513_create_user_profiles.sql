@@ -1,5 +1,6 @@
 create table if not exists public.user_profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
+  email text,
   approved boolean not null default false,
   created_at timestamptz not null default timezone('utc', now())
 );
@@ -19,8 +20,8 @@ language plpgsql
 security definer set search_path = public
 as $$
 begin
-  insert into public.user_profiles (user_id, approved)
-  values (new.id, false)
+  insert into public.user_profiles (user_id, email, approved)
+  values (new.id, new.email, false)
   on conflict (user_id) do nothing;
   return new;
 end;
@@ -32,6 +33,6 @@ create trigger on_auth_user_created
   for each row execute function public.handle_new_user();
 
 -- Backfill: all existing users are approved
-insert into public.user_profiles (user_id, approved)
-select id, true from auth.users
+insert into public.user_profiles (user_id, email, approved)
+select id, email, true from auth.users
 on conflict (user_id) do nothing;
